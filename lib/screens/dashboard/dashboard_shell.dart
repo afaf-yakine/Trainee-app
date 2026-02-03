@@ -87,7 +87,7 @@ class DashboardShell extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         const Text(
-          'NoRa',
+          'Trainee',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,

@@ -38,7 +38,7 @@ class WelcomeScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: Colors.white.withOpacity(0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -49,8 +49,8 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'NoRa',
-                    style: TextStyle(
+                    'Trainee',
+                    style: const TextStyle(
                       fontSize: 48,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -59,22 +59,31 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    appState.translate('welcome'),
+                    appState.translate('welcome to trainee'),
                     style: TextStyle(
                       fontSize: 18,
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: Colors.white.withOpacity(0.9),
                     ),
                   ),
                   const SizedBox(height: 48),
+                  // زر Login
                   CustomButton(
                     text: appState.translate('login'),
                     onPressed: () => Navigator.pushNamed(context, '/login'),
+                    backgroundColor: Colors.blue, // نفس اللون للزرين
+                    textColor: Colors.white,
+                    width: 200, // نفس العرض للزرين
+                    height: 50, // نفس الطول
                   ),
                   const SizedBox(height: 16),
+                  // زر SignUp
                   CustomButton(
                     text: appState.translate('signup'),
                     onPressed: () => Navigator.pushNamed(context, '/signup'),
-                    isSecondary: true,
+                    backgroundColor: Colors.blue, // نفس اللون للزرين
+                    textColor: Colors.white,
+                    width: 200, // نفس العرض
+                    height: 50, // نفس الطول
                   ),
                 ],
               ),

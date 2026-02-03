@@ -30,7 +30,7 @@ class AppState extends ChangeNotifier {
   String translate(String key) {
     final translations = {
       'en': {
-        'welcome': 'Welcome to NoRa',
+        'welcome': 'Welcome to Trainee',
         'login': 'Login',
         'signup': 'Sign Up',
         'email': 'Email',
@@ -62,7 +62,7 @@ class AppState extends ChangeNotifier {
         'logout': 'Logout',
       },
       'fr': {
-        'welcome': 'Bienvenue sur NoRa',
+        'welcome': 'Bienvenue sur Stagiaire',
         'login': 'Connexion',
         'signup': 'S\'inscrire',
         'email': 'E-mail',
@@ -94,7 +94,7 @@ class AppState extends ChangeNotifier {
         'logout': 'Déconnexion',
       },
       'ar': {
-        'welcome': 'مرحباً بكم في نورا',
+        'welcome': 'مرحباً بكم في المُتربّص',
         'login': 'تسجيل الدخول',
         'signup': 'إنشاء حساب',
         'email': 'البريد الإلكتروني',
