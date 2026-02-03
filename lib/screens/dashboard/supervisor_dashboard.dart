@@ -58,25 +58,31 @@ class SupervisorDashboard extends StatelessWidget {
                 else
                   Row(
                     children: [
-                      _buildSummaryCard(
-                        'Total Interns',
-                        '12',
-                        Icons.people_outline,
-                        Colors.blue,
+                      Expanded(
+                        child: _buildSummaryCard(
+                          'Total Interns',
+                          '12',
+                          Icons.people_outline,
+                          Colors.blue,
+                        ),
                       ),
                       const SizedBox(width: 16),
-                      _buildSummaryCard(
-                        'Pending Reviews',
-                        '5',
-                        Icons.rate_review_outlined,
-                        Colors.orange,
+                      Expanded(
+                        child: _buildSummaryCard(
+                          'Pending Reviews',
+                          '5',
+                          Icons.rate_review_outlined,
+                          Colors.orange,
+                        ),
                       ),
                       const SizedBox(width: 16),
-                      _buildSummaryCard(
-                        'Average Progress',
-                        '78%',
-                        Icons.trending_up_rounded,
-                        Colors.green,
+                      Expanded(
+                        child: _buildSummaryCard(
+                          'Average Progress',
+                          '78%',
+                          Icons.trending_up_rounded,
+                          Colors.green,
+                        ),
                       ),
                     ],
                   ),
@@ -98,24 +104,22 @@ class SupervisorDashboard extends StatelessWidget {
     IconData icon,
     Color color,
   ) {
-    return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 32),
-              const SizedBox(height: 12),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 12),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
               ),
-              Text(title, style: TextStyle(color: Colors.grey.shade600)),
-            ],
-          ),
+            ),
+            Text(title, style: TextStyle(color: Colors.grey.shade600)),
+          ],
         ),
       ),
     );

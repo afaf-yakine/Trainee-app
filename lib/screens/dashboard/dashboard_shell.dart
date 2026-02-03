@@ -34,7 +34,7 @@ class DashboardShell extends StatelessWidget {
           if (!isMobile) _buildSidebar(context, appState),
           Expanded(
             child: Container(
-              color: Theme.of(context).colorScheme.background,
+              color: Theme.of(context).colorScheme.surface,
               child: child,
             ),
           ),
@@ -96,32 +96,44 @@ class DashboardShell extends StatelessWidget {
         ),
         const SizedBox(height: 32),
         _buildNavItem(
+          context,
+          appState,
           Icons.dashboard_rounded,
           appState.translate('dashboard'),
           true,
         ),
         _buildNavItem(
+          context,
+          appState,
           Icons.task_alt_rounded,
           appState.translate('tasks'),
           false,
         ),
         _buildNavItem(
+          context,
+          appState,
           Icons.calendar_month_rounded,
           appState.translate('attendance'),
           false,
         ),
         _buildNavItem(
+          context,
+          appState,
           Icons.folder_copy_rounded,
           appState.translate('documents'),
           false,
         ),
         const Spacer(),
         _buildNavItem(
+          context,
+          appState,
           Icons.settings_rounded,
           appState.translate('settings'),
           false,
         ),
         _buildNavItem(
+          context,
+          appState,
           Icons.logout_rounded,
           appState.translate('logout'),
           false,
@@ -133,6 +145,8 @@ class DashboardShell extends StatelessWidget {
   }
 
   Widget _buildNavItem(
+    BuildContext context,
+    AppState appState,
     IconData icon,
     String label,
     bool isSelected, {
@@ -141,7 +155,18 @@ class DashboardShell extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: InkWell(
-        onTap: () {},
+        onTap: () {
+          if (label == appState.translate('logout')) {
+            appState.setUserRole(null);
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/login',
+              (route) => false,
+            );
+          } else {
+            // Future navigation logic can be added here
+          }
+        },
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

@@ -7,12 +7,20 @@ import '../widgets/custom_input.dart';
 import '../widgets/language_switcher.dart';
 import '../widgets/theme_toggle.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  String _selectedRole = 'Intern';
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -36,7 +44,7 @@ class LoginScreen extends StatelessWidget {
                         children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: const [
+                            children: [
                               LanguageSwitcher(),
                               ThemeToggle(),
                             ],
@@ -63,6 +71,33 @@ class LoginScreen extends StatelessWidget {
                             icon: Icons.lock_outline,
                             isPassword: true,
                           ),
+                          const SizedBox(height: 20),
+                          // Role Selection Dropdown for Demo Simulation
+                          DropdownButtonFormField<String>(
+                            value: _selectedRole,
+                            decoration: InputDecoration(
+                              labelText: appState.translate('role'),
+                              prefixIcon: const Icon(Icons.badge_outlined,
+                                  color: AppTheme.primaryColor),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            items:
+                                ['Intern', 'Supervisor', 'Admin'].map((role) {
+                              return DropdownMenuItem(
+                                value: role,
+                                child: Text(
+                                    appState.translate(role.toLowerCase())),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedRole = value!;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 12),
                           Align(
                             alignment: appState.isRTL
                                 ? Alignment.centerLeft
@@ -77,15 +112,18 @@ class LoginScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 24),
                           SizedBox(
                             width: double.infinity,
                             child: CustomButton(
                               text: appState.translate('login'),
-                              onPressed: () => Navigator.pushReplacementNamed(
-                                context,
-                                '/dashboard',
-                              ),
+                              onPressed: () {
+                                appState.setUserRole(_selectedRole);
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  '/dashboard',
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(height: 24),
@@ -102,19 +140,29 @@ class LoginScreen extends StatelessWidget {
                           const SizedBox(height: 24),
                           OutlinedButton.icon(
                             onPressed: () {
-                              // Demo: Sign in as Intern
-                              appState.setUserRole('Intern');
+                              // Demo: Default to selected role even for Google Sign-In
+                              appState.setUserRole(_selectedRole);
                               Navigator.pushReplacementNamed(
-                                  context, '/dashboard');
+                                context,
+                                '/dashboard',
+                              );
                             },
                             icon: const Icon(Icons.g_mobiledata, size: 32),
                             label: Text(
                               appState.translate('google_sign_in'),
                             ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 12, horizontal: 24),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 24),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Text(appState.translate('dont_have_account')),
                               TextButton(
@@ -122,6 +170,8 @@ class LoginScreen extends StatelessWidget {
                                     Navigator.pushNamed(context, '/signup'),
                                 child: Text(
                                   appState.translate('signup'),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ],

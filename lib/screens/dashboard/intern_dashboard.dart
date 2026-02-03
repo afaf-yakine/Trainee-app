@@ -22,7 +22,7 @@ class InternDashboard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildWelcomeHeader(appState),
+                _buildWelcomeHeader(context),
                 const SizedBox(height: 32),
                 if (!isNarrow)
                   Row(
@@ -70,14 +70,15 @@ class InternDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildWelcomeHeader(AppState appState) {
+  Widget _buildWelcomeHeader(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Hello, John Doe 👋',
           style: TextStyle(
-            fontSize: 28,
+            fontSize: isMobile ? 22 : 28,
             fontWeight: FontWeight.bold,
             color: AppTheme.primaryColor,
           ),
