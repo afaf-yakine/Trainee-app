@@ -59,12 +59,8 @@ class DashboardRouter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // In a real app, you would get the user role from AuthService/AppState
-    // For this demo, we can simulate different roles or default to Intern
-
-    // Switch between roles here to test different dashboards:
-    const String userRole =
-        'Intern'; // Options: 'Intern', 'Supervisor', 'Admin'
+    final appState = Provider.of<AppState>(context);
+    final String userRole = appState.userRole ?? 'Intern';
 
     switch (userRole) {
       case 'Supervisor':

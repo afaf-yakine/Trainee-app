@@ -13,50 +13,81 @@ class SupervisorDashboard extends StatelessWidget {
 
     return DashboardShell(
       title: appState.translate('supervisor'),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Supervisor Dashboard',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primaryColor,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSummaryCard(
-                  'Total Interns',
-                  '12',
-                  Icons.people_outline,
-                  Colors.blue,
+                Text(
+                  'Supervisor Dashboard',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryColor,
+                  ),
                 ),
-                const SizedBox(width: 16),
-                _buildSummaryCard(
-                  'Pending Reviews',
-                  '5',
-                  Icons.rate_review_outlined,
-                  Colors.orange,
-                ),
-                const SizedBox(width: 16),
-                _buildSummaryCard(
-                  'Average Progress',
-                  '78%',
-                  Icons.trending_up_rounded,
-                  Colors.green,
-                ),
+                const SizedBox(height: 24),
+                if (isMobile)
+                  Column(
+                    children: [
+                      _buildSummaryCard(
+                        'Total Interns',
+                        '12',
+                        Icons.people_outline,
+                        Colors.blue,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildSummaryCard(
+                        'Pending Reviews',
+                        '5',
+                        Icons.rate_review_outlined,
+                        Colors.orange,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildSummaryCard(
+                        'Average Progress',
+                        '78%',
+                        Icons.trending_up_rounded,
+                        Colors.green,
+                      ),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      _buildSummaryCard(
+                        'Total Interns',
+                        '12',
+                        Icons.people_outline,
+                        Colors.blue,
+                      ),
+                      const SizedBox(width: 16),
+                      _buildSummaryCard(
+                        'Pending Reviews',
+                        '5',
+                        Icons.rate_review_outlined,
+                        Colors.orange,
+                      ),
+                      const SizedBox(width: 16),
+                      _buildSummaryCard(
+                        'Average Progress',
+                        '78%',
+                        Icons.trending_up_rounded,
+                        Colors.green,
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 32),
+                _buildInternsTable(appState),
+                const SizedBox(height: 32),
+                _buildMeetingsSchedule(appState),
               ],
             ),
-            const SizedBox(height: 32),
-            _buildInternsTable(appState),
-            const SizedBox(height: 32),
-            _buildMeetingsSchedule(appState),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -102,20 +133,23 @@ class SupervisorDashboard extends StatelessWidget {
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            DataTable(
-              columnSpacing: 40,
-              columns: const [
-                DataColumn(label: Text('Name')),
-                DataColumn(label: Text('Project')),
-                DataColumn(label: Text('Progress')),
-                DataColumn(label: Text('Status')),
-                DataColumn(label: Text('Actions')),
-              ],
-              rows: [
-                _buildDataRow('Alice Johnson', 'Mobile App', '85%', 'Active'),
-                _buildDataRow('Bob Smith', 'Backend API', '40%', 'On Leave'),
-                _buildDataRow('Charlie Brown', 'UI Design', '95%', 'Active'),
-              ],
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columnSpacing: 40,
+                columns: const [
+                  DataColumn(label: Text('Name')),
+                  DataColumn(label: Text('Project')),
+                  DataColumn(label: Text('Progress')),
+                  DataColumn(label: Text('Status')),
+                  DataColumn(label: Text('Actions')),
+                ],
+                rows: [
+                  _buildDataRow('Alice Johnson', 'Mobile App', '85%', 'Active'),
+                  _buildDataRow('Bob Smith', 'Backend API', '40%', 'On Leave'),
+                  _buildDataRow('Charlie Brown', 'UI Design', '95%', 'Active'),
+                ],
+              ),
             ),
           ],
         ),

@@ -6,11 +6,17 @@ class AppState extends ChangeNotifier {
 
   ThemeMode get themeMode => _themeMode;
   Locale get locale => _locale;
+  String? _userRole;
+  String? get userRole => _userRole;
+
+  void setUserRole(String? role) {
+    _userRole = role;
+    notifyListeners();
+  }
 
   void toggleTheme() {
-    _themeMode = _themeMode == ThemeMode.light
-        ? ThemeMode.dark
-        : ThemeMode.light;
+    _themeMode =
+        _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
   }
 

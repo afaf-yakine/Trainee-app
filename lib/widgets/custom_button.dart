@@ -39,7 +39,7 @@ class _CustomButtonState extends State<CustomButton> {
           boxShadow: _isHovered && !widget.isSecondary
               ? [
                   BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.4),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.4),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -50,9 +50,8 @@ class _CustomButtonState extends State<CustomButton> {
           onPressed: widget.onPressed,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
-            foregroundColor: widget.isSecondary
-                ? AppTheme.primaryColor
-                : Colors.white,
+            foregroundColor:
+                widget.isSecondary ? AppTheme.primaryColor : Colors.white,
             shadowColor: Colors.transparent,
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             shape: RoundedRectangleBorder(

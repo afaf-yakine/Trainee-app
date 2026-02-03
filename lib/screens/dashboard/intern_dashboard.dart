@@ -13,40 +13,59 @@ class InternDashboard extends StatelessWidget {
 
     return DashboardShell(
       title: appState.translate('intern'),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildWelcomeHeader(appState),
-            const SizedBox(height: 32),
-            Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 1100;
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  flex: 2,
-                  child: Column(
+                _buildWelcomeHeader(appState),
+                const SizedBox(height: 32),
+                if (!isNarrow)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildStatsRow(appState),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          children: [
+                            _buildStatsRow(appState, constraints.maxWidth),
+                            const SizedBox(height: 24),
+                            _buildTaskList(appState),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _buildProfileCard(appState),
+                            const SizedBox(height: 24),
+                            _buildNotificationsList(appState),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                else
+                  Column(
+                    children: [
+                      _buildStatsRow(appState, constraints.maxWidth),
+                      const SizedBox(height: 24),
+                      _buildProfileCard(appState),
                       const SizedBox(height: 24),
                       _buildTaskList(appState),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 24),
-                Expanded(
-                  child: Column(
-                    children: [
-                      _buildProfileCard(appState),
                       const SizedBox(height: 24),
                       _buildNotificationsList(appState),
                     ],
                   ),
-                ),
               ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -71,19 +90,36 @@ class InternDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatsRow(AppState appState) {
-    return Row(
+  Widget _buildStatsRow(AppState appState, double width) {
+    final bool isSmall = width < 600;
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
       children: [
         _buildStatCard(
           'Tasks Completed',
           '12/15',
           Icons.check_circle_outline,
           Colors.blue,
+          isSmall,
+          width,
         ),
-        const SizedBox(width: 16),
-        _buildStatCard('Attendance', '95%', Icons.calendar_today, Colors.green),
-        const SizedBox(width: 16),
-        _buildStatCard('Days Left', '45', Icons.timer_outlined, Colors.orange),
+        _buildStatCard(
+          'Attendance',
+          '95%',
+          Icons.calendar_today,
+          Colors.green,
+          isSmall,
+          width,
+        ),
+        _buildStatCard(
+          'Days Left',
+          '45',
+          Icons.timer_outlined,
+          Colors.orange,
+          isSmall,
+          width,
+        ),
       ],
     );
   }
@@ -93,8 +129,11 @@ class InternDashboard extends StatelessWidget {
     String value,
     IconData icon,
     Color color,
+    bool isSmall,
+    double width,
   ) {
-    return Expanded(
+    return SizedBox(
+      width: isSmall ? double.infinity : (width < 900 ? 180 : 220),
       child: Card(
         child: Padding(
           padding: const EdgeInsets.all(20),

@@ -13,36 +13,44 @@ class AdminDashboard extends StatelessWidget {
 
     return DashboardShell(
       title: appState.translate('admin'),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Admin Control Panel',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primaryColor,
-              ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Admin Control Panel',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _buildStatsGrid(appState, constraints.maxWidth),
+                const SizedBox(height: 32),
+                _buildUserManagementSection(appState),
+              ],
             ),
-            const SizedBox(height: 24),
-            _buildStatsGrid(appState),
-            const SizedBox(height: 32),
-            _buildUserManagementSection(appState),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildStatsGrid(AppState appState) {
+  Widget _buildStatsGrid(AppState appState, double width) {
+    int crossAxisCount = width < 600 ? 1 : (width < 1000 ? 2 : 4);
+    double aspectRatio = width < 600 ? 2.5 : 1.5;
+
     return GridView.count(
       shrinkWrap: true,
-      crossAxisCount: 4,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: crossAxisCount,
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
-      childAspectRatio: 1.5,
+      childAspectRatio: aspectRatio,
       children: [
         _buildAdminStatCard(
           'Total Users',
