@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; // إذا استعملتي FlutterFire CLI
+
 import 'providers/app_state.dart';
 import 'theme/app_theme.dart';
 import 'screens/welcome_screen.dart';
@@ -10,10 +13,17 @@ import 'screens/dashboard/intern_dashboard.dart';
 import 'screens/dashboard/supervisor_dashboard.dart';
 import 'screens/dashboard/admin_dashboard.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // ضروري قبل أي async
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform, // تهيئة Firebase
+  );
+
   runApp(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => AppState())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppState()),
+      ],
       child: const NoRaApp(),
     ),
   );
@@ -33,9 +43,6 @@ class NoRaApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: appState.themeMode,
       locale: appState.locale,
-
-      // The directionality is automatically handled by Flutter's Locale setting
-      // but we can wrap parts of the UI if specific RTL overrides are needed.
       initialRoute: '/welcome',
       routes: {
         '/welcome': (context) => const WelcomeScreen(),

@@ -22,7 +22,7 @@ class SupervisorDashboard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Supervisor Dashboard',
+                  appState.translate('supervisor_dashboard_title'),
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -34,21 +34,21 @@ class SupervisorDashboard extends StatelessWidget {
                   Column(
                     children: [
                       _buildSummaryCard(
-                        'Total Interns',
-                        '12',
+                        appState.translate('total_interns'),
+                        '12', // لاحقًا ستربطها بالبيانات الحقيقية من Firebase
                         Icons.people_outline,
                         Colors.blue,
                       ),
                       const SizedBox(height: 16),
                       _buildSummaryCard(
-                        'Pending Reviews',
+                        appState.translate('pending_reviews'),
                         '5',
                         Icons.rate_review_outlined,
                         Colors.orange,
                       ),
                       const SizedBox(height: 16),
                       _buildSummaryCard(
-                        'Average Progress',
+                        appState.translate('average_progress'),
                         '78%',
                         Icons.trending_up_rounded,
                         Colors.green,
@@ -60,7 +60,7 @@ class SupervisorDashboard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: _buildSummaryCard(
-                          'Total Interns',
+                          appState.translate('total_interns'),
                           '12',
                           Icons.people_outline,
                           Colors.blue,
@@ -69,7 +69,7 @@ class SupervisorDashboard extends StatelessWidget {
                       const SizedBox(width: 16),
                       Expanded(
                         child: _buildSummaryCard(
-                          'Pending Reviews',
+                          appState.translate('pending_reviews'),
                           '5',
                           Icons.rate_review_outlined,
                           Colors.orange,
@@ -78,7 +78,7 @@ class SupervisorDashboard extends StatelessWidget {
                       const SizedBox(width: 16),
                       Expanded(
                         child: _buildSummaryCard(
-                          'Average Progress',
+                          appState.translate('average_progress'),
                           '78%',
                           Icons.trending_up_rounded,
                           Colors.green,
@@ -141,12 +141,12 @@ class SupervisorDashboard extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columnSpacing: 40,
-                columns: const [
-                  DataColumn(label: Text('Name')),
-                  DataColumn(label: Text('Project')),
-                  DataColumn(label: Text('Progress')),
-                  DataColumn(label: Text('Status')),
-                  DataColumn(label: Text('Actions')),
+                columns: [
+                  DataColumn(label: Text(appState.translate('name'))),
+                  DataColumn(label: Text(appState.translate('project'))),
+                  DataColumn(label: Text(appState.translate('progress'))),
+                  DataColumn(label: Text(appState.translate('status'))),
+                  DataColumn(label: Text(appState.translate('actions'))),
                 ],
                 rows: [
                   _buildDataRow('Alice Johnson', 'Mobile App', '85%', 'Active'),
@@ -205,11 +205,17 @@ class SupervisorDashboard extends StatelessWidget {
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildMeetingItem('Weekly Sync', 'Today, 2:00 PM', 'Google Meet'),
+            _buildMeetingItem(
+              'Weekly Sync',
+              'Today, 2:00 PM',
+              'Google Meet',
+              appState,
+            ),
             _buildMeetingItem(
               'Project Review',
               'Tomorrow, 10:00 AM',
               'Room 302',
+              appState,
             ),
           ],
         ),
@@ -217,12 +223,16 @@ class SupervisorDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildMeetingItem(String title, String time, String location) {
+  Widget _buildMeetingItem(
+      String title, String time, String location, AppState appState) {
     return ListTile(
       leading: const Icon(Icons.event),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text('$time • $location'),
-      trailing: ElevatedButton(onPressed: () {}, child: const Text('Join')),
+      trailing: ElevatedButton(
+        onPressed: () {},
+        child: Text(appState.translate('join')),
+      ),
     );
   }
 }

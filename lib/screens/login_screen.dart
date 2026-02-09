@@ -6,6 +6,9 @@ import '../widgets/custom_button.dart';
 import '../widgets/custom_input.dart';
 import '../widgets/language_switcher.dart';
 import '../widgets/theme_toggle.dart';
+import '../services/auth_service.dart'; // Google Sign-In
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +19,9 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   String _selectedRole = 'Intern';
+
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
+                            children: const [
                               LanguageSwitcher(),
                               ThemeToggle(),
                             ],
@@ -62,17 +68,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 32),
                           CustomInput(
+                            controller: emailController,
                             label: appState.translate('email'),
                             icon: Icons.email_outlined,
                           ),
                           const SizedBox(height: 20),
                           CustomInput(
+                            controller: passwordController,
                             label: appState.translate('password'),
                             icon: Icons.lock_outline,
                             isPassword: true,
                           ),
                           const SizedBox(height: 20),
-                          // Role Selection Dropdown for Demo Simulation
                           DropdownButtonFormField<String>(
                             value: _selectedRole,
                             decoration: InputDecoration(
@@ -117,12 +124,48 @@ class _LoginScreenState extends State<LoginScreen> {
                             width: double.infinity,
                             child: CustomButton(
                               text: appState.translate('login'),
-                              onPressed: () {
+                              onPressed: () async {
                                 appState.setUserRole(_selectedRole);
-                                Navigator.pushReplacementNamed(
-                                  context,
-                                  '/dashboard',
-                                );
+
+                                try {
+                                  UserCredential userCredential =
+                                      await FirebaseAuth
+                                          .instance
+                                          .signInWithEmailAndPassword(
+                                              email:
+                                                  emailController.text.trim(),
+                                              password:
+                                                  passwordController.text);
+
+                                  User? user = userCredential.user;
+
+                                  if (user != null) {
+                                    DocumentSnapshot userDoc =
+                                        await FirebaseFirestore.instance
+                                            .collection('users')
+                                            .doc(user.uid)
+                                            .get();
+
+                                    if (userDoc.exists) {
+                                      // ✅ تحديث AppState فورًا بعد تسجيل الدخول
+                                      appState.setCurrentUser(
+                                        userDoc['name'] ?? '',
+                                        userDoc['email'] ?? '',
+                                        userDoc['role'] ?? _selectedRole,
+                                        userDoc['specialty'] ?? '',
+                                      );
+                                    }
+                                  }
+
+                                  Navigator.pushReplacementNamed(
+                                      context, '/dashboard');
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            'Login failed: ${e.toString()}')),
+                                  );
+                                }
                               },
                             ),
                           ),
@@ -138,25 +181,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                           const SizedBox(height: 24),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              // Demo: Default to selected role even for Google Sign-In
-                              appState.setUserRole(_selectedRole);
-                              Navigator.pushReplacementNamed(
-                                context,
-                                '/dashboard',
-                              );
-                            },
-                            icon: const Icon(Icons.g_mobiledata, size: 32),
-                            label: Text(
-                              appState.translate('google_sign_in'),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 12, horizontal: 24),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                          SizedBox(
+                            width: 250,
+                            height: 50,
+                            child: CustomButton(
+                              text: appState.translate('google_sign_in'),
+                              icon: Icons.login,
+                              backgroundColor: Colors.red,
+                              textColor: Colors.white,
+                              onPressed: () =>
+                                  AuthService.signInWithGoogle(context),
                             ),
                           ),
                           const SizedBox(height: 24),

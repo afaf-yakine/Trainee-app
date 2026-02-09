@@ -21,7 +21,7 @@ class AdminDashboard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Admin Control Panel',
+                  appState.translate('admin_control_panel'),
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -53,26 +53,26 @@ class AdminDashboard extends StatelessWidget {
       childAspectRatio: aspectRatio,
       children: [
         _buildAdminStatCard(
-          'Total Users',
+          appState.translate('total_users'),
           '1,240',
           Icons.people,
           Colors.indigo,
         ),
         _buildAdminStatCard(
-          'Active Sessions',
+          appState.translate('active_sessions'),
           '342',
           Icons.login_rounded,
           Colors.teal,
         ),
         _buildAdminStatCard(
-          'New Requests',
+          appState.translate('new_requests'),
           '18',
           Icons.pending_actions_rounded,
           Colors.amber,
         ),
         _buildAdminStatCard(
-          'System Health',
-          'Good',
+          appState.translate('system_health'),
+          appState.translate('good'),
           Icons.health_and_safety_outlined,
           Colors.green,
         ),
@@ -125,19 +125,24 @@ class AdminDashboard extends StatelessWidget {
                 ElevatedButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.add),
-                  label: const Text('Add User'),
+                  label: Text(appState.translate('add_user')),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            _buildUserList(),
+            _buildUserList(appState),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildUserList() {
+  Widget _buildUserList(AppState appState) {
+    final roles = [
+      appState.translate('supervisor'),
+      appState.translate('intern')
+    ];
+
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -146,18 +151,20 @@ class AdminDashboard extends StatelessWidget {
       itemBuilder: (context, index) {
         return ListTile(
           leading: const CircleAvatar(child: Icon(Icons.person)),
-          title: Text('User ${index + 1}'),
-          subtitle: Text('role: ${index % 2 == 0 ? 'Supervisor' : 'Intern'}'),
+          title: Text('${appState.translate('user')} ${index + 1}'),
+          subtitle: Text('${appState.translate('role')}: ${roles[index % 2]}'),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
                 onPressed: () {},
+                tooltip: appState.translate('edit'),
               ),
               IconButton(
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
                 onPressed: () {},
+                tooltip: appState.translate('delete'),
               ),
             ],
           ),

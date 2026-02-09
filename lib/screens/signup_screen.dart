@@ -6,6 +6,8 @@ import '../widgets/custom_button.dart';
 import '../widgets/custom_input.dart';
 import '../widgets/language_switcher.dart';
 import '../widgets/theme_toggle.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -16,6 +18,58 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   String _selectedRole = 'Intern';
+
+  final TextEditingController firstNameController = TextEditingController();
+  final TextEditingController lastNameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController specialtyController = TextEditingController();
+
+  Future<void> handleSignUp() async {
+    final appState = Provider.of<AppState>(context, listen: false);
+
+    String name = '${firstNameController.text} ${lastNameController.text}';
+    String email = emailController.text.trim();
+    String password = passwordController.text;
+    String specialty = specialtyController.text.trim();
+    String role = _selectedRole;
+
+    if (name.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        specialty.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill all fields')),
+      );
+      return;
+    }
+
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: password);
+
+      User? user = userCredential.user;
+
+      if (user != null) {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'name': name,
+          'email': email,
+          'specialty': specialty,
+          'role': role,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        // ✅ تحديث AppState فورًا بعد التسجيل
+        appState.setCurrentUser(name, email, role, specialty);
+      }
+
+      Navigator.pushReplacementNamed(context, '/dashboard');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Signup failed: ${e.toString()}')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,11 +119,13 @@ class _SignupScreenState extends State<SignupScreen> {
                             CustomInput(
                               label: appState.translate('first_name'),
                               icon: Icons.person_outline,
+                              controller: firstNameController,
                             ),
                             const SizedBox(height: 16),
                             CustomInput(
                               label: appState.translate('last_name'),
                               icon: Icons.person_outline,
+                              controller: lastNameController,
                             ),
                           ] else
                             Row(
@@ -78,6 +134,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                   child: CustomInput(
                                     label: appState.translate('first_name'),
                                     icon: Icons.person_outline,
+                                    controller: firstNameController,
                                   ),
                                 ),
                                 const SizedBox(width: 16),
@@ -85,6 +142,7 @@ class _SignupScreenState extends State<SignupScreen> {
                                   child: CustomInput(
                                     label: appState.translate('last_name'),
                                     icon: Icons.person_outline,
+                                    controller: lastNameController,
                                   ),
                                 ),
                               ],
@@ -93,17 +151,20 @@ class _SignupScreenState extends State<SignupScreen> {
                           CustomInput(
                             label: appState.translate('email'),
                             icon: Icons.email_outlined,
+                            controller: emailController,
                           ),
                           const SizedBox(height: 16),
                           CustomInput(
                             label: appState.translate('password'),
                             icon: Icons.lock_outline,
                             isPassword: true,
+                            controller: passwordController,
                           ),
                           const SizedBox(height: 16),
                           CustomInput(
                             label: appState.translate('specialty'),
                             icon: Icons.work_outline,
+                            controller: specialtyController,
                           ),
                           const SizedBox(height: 24),
                           if (isNarrow)
@@ -131,13 +192,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             width: double.infinity,
                             child: CustomButton(
                               text: appState.translate('signup'),
-                              onPressed: () {
-                                appState.setUserRole(_selectedRole);
-                                Navigator.pushReplacementNamed(
-                                  context,
-                                  '/dashboard',
-                                );
-                              },
+                              onPressed: handleSignUp,
                             ),
                           ),
                           const SizedBox(height: 24),

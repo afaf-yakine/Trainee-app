@@ -6,13 +6,6 @@ class AppState extends ChangeNotifier {
 
   ThemeMode get themeMode => _themeMode;
   Locale get locale => _locale;
-  String? _userRole;
-  String? get userRole => _userRole;
-
-  void setUserRole(String? role) {
-    _userRole = role;
-    notifyListeners();
-  }
 
   void toggleTheme() {
     _themeMode =
@@ -27,103 +20,70 @@ class AppState extends ChangeNotifier {
 
   bool get isRTL => _locale.languageCode == 'ar';
 
+  String currentUserName = '';
+  String currentUserEmail = '';
+  String currentUserRole = '';
+  String currentUserSpecialty = '';
+
+  void setCurrentUser(
+      String name, String email, String role, String specialty) {
+    currentUserName = name;
+    currentUserEmail = email;
+    currentUserRole = role;
+    currentUserSpecialty = specialty;
+    notifyListeners();
+  }
+
+  String? _userRole;
+  String? get userRole => _userRole;
+  void setUserRole(String? role) {
+    _userRole = role;
+    notifyListeners();
+  }
+
+  // Fake data
+  Map<String, String> currentUserStats = {
+    'tasksCompleted': '0/0',
+    'attendance': '0%',
+    'daysLeft': '0',
+  };
+
+  List<Map<String, String>> currentUserTasks = [
+    {
+      'title': 'Feature Implementation',
+      'priority': 'High',
+      'status': 'Pending'
+    },
+    {'title': 'Bug Fixing', 'priority': 'Medium', 'status': 'Completed'},
+    {'title': 'Documentation', 'priority': 'Low', 'status': 'In Progress'},
+  ];
+
+  List<Map<String, String>> currentUserNotifications = [
+    {'title': 'Task assigned', 'time': '2 hours ago'},
+    {'title': 'Report approved', 'time': '5 hours ago'},
+    {'title': 'Meeting scheduled', 'time': 'Yesterday'},
+  ];
+
+  // Translation
   String translate(String key) {
     final translations = {
       'en': {
-        'welcome': 'Welcome to Trainee',
-        'login': 'Login',
-        'signup': 'Sign Up',
-        'email': 'Email',
-        'password': 'Password',
-        'forgot_password': 'Forgot Password?',
-        'dont_have_account': 'Don\'t have an account?',
-        'already_have_account': 'Already have an account?',
-        'first_name': 'First Name',
-        'last_name': 'Last Name',
-        'role': 'Role',
-        'specialty': 'Specialty / Department',
-        'reset_password': 'Reset Password',
-        'send_reset_link': 'Send Reset Link',
-        'intern': 'Intern',
-        'supervisor': 'Supervisor',
-        'admin': 'Admin',
-        'google_sign_in': 'Sign in with Google',
-        'dashboard': 'Dashboard',
-        'tasks': 'Tasks',
+        'welcome': 'Welcome',
+        'tasks_completed': 'Tasks Completed',
         'attendance': 'Attendance',
-        'documents': 'Documents',
-        'notifications': 'Notifications',
-        'interns': 'Interns',
-        'reports': 'Reports',
-        'meetings': 'Meetings',
-        'users': 'Users',
-        'statistics': 'Statistics',
-        'settings': 'Settings',
-        'logout': 'Logout',
+        'days_left': 'Days Left'
       },
       'fr': {
-        'welcome': 'Bienvenue sur Stagiaire',
-        'login': 'Connexion',
-        'signup': 'S\'inscrire',
-        'email': 'E-mail',
-        'password': 'Mot de passe',
-        'forgot_password': 'Mot de passe oublié ?',
-        'dont_have_account': 'Vous n\'avez pas de compte ?',
-        'already_have_account': 'Vous avez déjà un compte ?',
-        'first_name': 'Prénom',
-        'last_name': 'Nom',
-        'role': 'Rôle',
-        'specialty': 'Spécialité / Département',
-        'reset_password': 'Réinitialiser le mot de passe',
-        'send_reset_link': 'Envoyer le lien',
-        'intern': 'Stagiaire',
-        'supervisor': 'Superviseur',
-        'admin': 'Administrateur',
-        'google_sign_in': 'Se connecter avec Google',
-        'dashboard': 'Tableau de bord',
-        'tasks': 'Tâches',
+        'welcome': 'Bienvenue',
+        'tasks_completed': 'Tâches terminées',
         'attendance': 'Présence',
-        'documents': 'Documents',
-        'notifications': 'Notifications',
-        'interns': 'Stagiaires',
-        'reports': 'Rapports',
-        'meetings': 'Réunions',
-        'users': 'Utilisateurs',
-        'statistics': 'Statistiques',
-        'settings': 'Paramètres',
-        'logout': 'Déconnexion',
+        'days_left': 'Jours restants'
       },
       'ar': {
-        'welcome': 'مرحباً بكم في المُتربّص',
-        'login': 'تسجيل الدخول',
-        'signup': 'إنشاء حساب',
-        'email': 'البريد الإلكتروني',
-        'password': 'كلمة المرور',
-        'forgot_password': 'هل نسيت كلمة المرور؟',
-        'dont_have_account': 'ليس لديك حساب؟',
-        'already_have_account': 'لديك حساب بالفعل؟',
-        'first_name': 'الاسم الأول',
-        'last_name': 'اسم العائلة',
-        'role': 'الدور',
-        'specialty': 'التخصص / القسم',
-        'reset_password': 'إعادة تعيين كلمة المرور',
-        'send_reset_link': 'إرسال رابط التعيين',
-        'intern': 'متدرب',
-        'supervisor': 'مشرف',
-        'admin': 'مدير',
-        'google_sign_in': 'تسجيل الدخول عبر جوجل',
-        'dashboard': 'لوحة التحكم',
-        'tasks': 'المهام',
+        'welcome': 'مرحباً',
+        'tasks_completed': 'المهام المكتملة',
         'attendance': 'الحضور',
-        'documents': 'المستندات',
-        'notifications': 'التنبيهات',
-        'interns': 'المتدربين',
-        'reports': 'التقارير',
-        'meetings': 'الاجتماعات',
-        'users': 'المستخدمين',
-        'statistics': 'الإحصائيات',
-        'settings': 'الإعدادات',
-        'logout': 'تسجيل الخروج',
+        'days_left': 'الأيام المتبقية'
       },
     };
     return translations[_locale.languageCode]?[key] ?? key;
