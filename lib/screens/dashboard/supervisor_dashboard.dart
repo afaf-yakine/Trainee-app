@@ -23,67 +23,49 @@ class SupervisorDashboard extends StatelessWidget {
               children: [
                 Text(
                   appState.translate('supervisor_dashboard_title'),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 24),
                 if (isMobile)
                   Column(
                     children: [
-                      _buildSummaryCard(
-                        appState.translate('total_interns'),
-                        '12', // لاحقًا ستربطها بالبيانات الحقيقية من Firebase
-                        Icons.people_outline,
-                        Colors.blue,
-                      ),
+                      _buildSummaryCard(appState.translate('total_interns'),
+                          '12', Icons.people_outline, Colors.blue),
                       const SizedBox(height: 16),
-                      _buildSummaryCard(
-                        appState.translate('pending_reviews'),
-                        '5',
-                        Icons.rate_review_outlined,
-                        Colors.orange,
-                      ),
+                      _buildSummaryCard(appState.translate('pending_reviews'),
+                          '5', Icons.rate_review_outlined, Colors.orange),
                       const SizedBox(height: 16),
-                      _buildSummaryCard(
-                        appState.translate('average_progress'),
-                        '78%',
-                        Icons.trending_up_rounded,
-                        Colors.green,
-                      ),
+                      _buildSummaryCard(appState.translate('average_progress'),
+                          '78%', Icons.trending_up_rounded, Colors.green),
                     ],
                   )
                 else
                   Row(
                     children: [
                       Expanded(
-                        child: _buildSummaryCard(
-                          appState.translate('total_interns'),
-                          '12',
-                          Icons.people_outline,
-                          Colors.blue,
-                        ),
-                      ),
+                          child: _buildSummaryCard(
+                              appState.translate('total_interns'),
+                              '12',
+                              Icons.people_outline,
+                              Colors.blue)),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: _buildSummaryCard(
-                          appState.translate('pending_reviews'),
-                          '5',
-                          Icons.rate_review_outlined,
-                          Colors.orange,
-                        ),
-                      ),
+                          child: _buildSummaryCard(
+                              appState.translate('pending_reviews'),
+                              '5',
+                              Icons.rate_review_outlined,
+                              Colors.orange)),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: _buildSummaryCard(
-                          appState.translate('average_progress'),
-                          '78%',
-                          Icons.trending_up_rounded,
-                          Colors.green,
-                        ),
-                      ),
+                          child: _buildSummaryCard(
+                              appState.translate('average_progress'),
+                              '78%',
+                              Icons.trending_up_rounded,
+                              Colors.green)),
                     ],
                   ),
                 const SizedBox(height: 32),
@@ -99,126 +81,105 @@ class SupervisorDashboard extends StatelessWidget {
   }
 
   Widget _buildSummaryCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 12),
-            Text(
-              value,
+      String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 32),
+          const SizedBox(height: 12),
+          Text(value,
               style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(title, style: TextStyle(color: Colors.grey.shade600)),
-          ],
-        ),
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white)),
+          Text(title, style: const TextStyle(color: Colors.white70)),
+        ],
       ),
     );
   }
 
   Widget _buildInternsTable(AppState appState) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              appState.translate('interns'),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+          color: Colors.white, borderRadius: BorderRadius.circular(15)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(appState.translate('interns'),
+              style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0A1F44))),
+          const SizedBox(height: 16),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columns: [
+                DataColumn(label: Text(appState.translate('name'))),
+                DataColumn(label: Text(appState.translate('project'))),
+                DataColumn(label: Text(appState.translate('progress'))),
+                DataColumn(label: Text(appState.translate('status'))),
+                DataColumn(label: Text(appState.translate('actions'))),
+              ],
+              rows: [
+                _buildDataRow('Alice Johnson', 'Mobile App', '85%', 'Active'),
+                _buildDataRow('Bob Smith', 'Backend API', '40%', 'On Leave'),
+                _buildDataRow('Charlie Brown', 'UI Design', '95%', 'Active'),
+              ],
             ),
-            const SizedBox(height: 16),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columnSpacing: 40,
-                columns: [
-                  DataColumn(label: Text(appState.translate('name'))),
-                  DataColumn(label: Text(appState.translate('project'))),
-                  DataColumn(label: Text(appState.translate('progress'))),
-                  DataColumn(label: Text(appState.translate('status'))),
-                  DataColumn(label: Text(appState.translate('actions'))),
-                ],
-                rows: [
-                  _buildDataRow('Alice Johnson', 'Mobile App', '85%', 'Active'),
-                  _buildDataRow('Bob Smith', 'Backend API', '40%', 'On Leave'),
-                  _buildDataRow('Charlie Brown', 'UI Design', '95%', 'Active'),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   DataRow _buildDataRow(
-    String name,
-    String project,
-    String progress,
-    String status,
-  ) {
+      String name, String project, String progress, String status) {
     return DataRow(
       cells: [
         DataCell(
-          Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ),
+            Text(name, style: const TextStyle(fontWeight: FontWeight.bold))),
         DataCell(Text(project)),
-        DataCell(
-          SizedBox(
-            width: 100,
+        DataCell(SizedBox(
+            width: 80,
             child: LinearProgressIndicator(
-              value: double.parse(progress.replaceAll('%', '')) / 100,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                AppTheme.primaryColor,
-              ),
-            ),
-          ),
-        ),
+                value: double.parse(progress.replaceAll('%', '')) / 100,
+                backgroundColor: Colors.grey.shade200,
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(Color(0xFF0A1F44))))),
         DataCell(Text(status)),
         DataCell(
-          IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
-        ),
+            IconButton(icon: const Icon(Icons.more_vert), onPressed: () {})),
       ],
     );
   }
 
   Widget _buildMeetingsSchedule(AppState appState) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              appState.translate('meetings'),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            _buildMeetingItem(
-              'Weekly Sync',
-              'Today, 2:00 PM',
-              'Google Meet',
-              appState,
-            ),
-            _buildMeetingItem(
-              'Project Review',
-              'Tomorrow, 10:00 AM',
-              'Room 302',
-              appState,
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+          color: Colors.white, borderRadius: BorderRadius.circular(15)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(appState.translate('meetings'),
+              style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF0A1F44))),
+          const SizedBox(height: 16),
+          _buildMeetingItem(
+              'Weekly Sync', 'Today, 2:00 PM', 'Google Meet', appState),
+          _buildMeetingItem(
+              'Project Review', 'Tomorrow, 10:00 AM', 'Room 302', appState),
+        ],
       ),
     );
   }
@@ -226,11 +187,14 @@ class SupervisorDashboard extends StatelessWidget {
   Widget _buildMeetingItem(
       String title, String time, String location, AppState appState) {
     return ListTile(
-      leading: const Icon(Icons.event),
+      leading: const Icon(Icons.event, color: Color(0xFF0A1F44)),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text('$time • $location'),
       trailing: ElevatedButton(
         onPressed: () {},
+        style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0A1F44),
+            foregroundColor: Colors.white),
         child: Text(appState.translate('join')),
       ),
     );

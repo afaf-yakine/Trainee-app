@@ -22,10 +22,10 @@ class AdminDashboard extends StatelessWidget {
               children: [
                 Text(
                   appState.translate('admin_control_panel'),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -52,87 +52,77 @@ class AdminDashboard extends StatelessWidget {
       mainAxisSpacing: 16,
       childAspectRatio: aspectRatio,
       children: [
+        _buildAdminStatCard(appState.translate('total_users'), '1,240',
+            Icons.people, Colors.indigoAccent),
+        _buildAdminStatCard(appState.translate('active_sessions'), '342',
+            Icons.login_rounded, Colors.tealAccent),
+        _buildAdminStatCard(appState.translate('new_requests'), '18',
+            Icons.pending_actions_rounded, Colors.amberAccent),
         _buildAdminStatCard(
-          appState.translate('total_users'),
-          '1,240',
-          Icons.people,
-          Colors.indigo,
-        ),
-        _buildAdminStatCard(
-          appState.translate('active_sessions'),
-          '342',
-          Icons.login_rounded,
-          Colors.teal,
-        ),
-        _buildAdminStatCard(
-          appState.translate('new_requests'),
-          '18',
-          Icons.pending_actions_rounded,
-          Colors.amber,
-        ),
-        _buildAdminStatCard(
-          appState.translate('system_health'),
-          appState.translate('good'),
-          Icons.health_and_safety_outlined,
-          Colors.green,
-        ),
+            appState.translate('system_health'),
+            appState.translate('good'),
+            Icons.health_and_safety_outlined,
+            Colors.greenAccent),
       ],
     );
   }
 
   Widget _buildAdminStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            Text(title, style: TextStyle(color: Colors.grey.shade600)),
-          ],
-        ),
+      String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 32),
+          const SizedBox(height: 12),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white)),
+          Text(title, style: const TextStyle(color: Colors.white70)),
+        ],
       ),
     );
   }
 
   Widget _buildUserManagementSection(AppState appState) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  appState.translate('users'),
-                  style: const TextStyle(
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+          color: Colors.white, borderRadius: BorderRadius.circular(15)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                appState.translate('users'),
+                style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                  ),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.add),
-                  label: Text(appState.translate('add_user')),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _buildUserList(appState),
-          ],
-        ),
+                    color: Color(0xFF0A1F44)),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0A1F44),
+                    foregroundColor: Colors.white),
+                icon: const Icon(Icons.add),
+                label: Text(appState.translate('add_user')),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildUserList(appState),
+        ],
       ),
     );
   }
@@ -150,22 +140,20 @@ class AdminDashboard extends StatelessWidget {
       separatorBuilder: (_, __) => const Divider(),
       itemBuilder: (context, index) {
         return ListTile(
-          leading: const CircleAvatar(child: Icon(Icons.person)),
-          title: Text('${appState.translate('user')} ${index + 1}'),
+          leading: const CircleAvatar(
+              backgroundColor: Color(0xFFF5F5F5),
+              child: Icon(Icons.person, color: Color(0xFF0A1F44))),
+          title: Text('${appState.translate('user')} ${index + 1}',
+              style: const TextStyle(fontWeight: FontWeight.bold)),
           subtitle: Text('${appState.translate('role')}: ${roles[index % 2]}'),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () {},
-                tooltip: appState.translate('edit'),
-              ),
+                  icon: const Icon(Icons.edit_outlined), onPressed: () {}),
               IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                onPressed: () {},
-                tooltip: appState.translate('delete'),
-              ),
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () {}),
             ],
           ),
         );
