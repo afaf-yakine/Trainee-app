@@ -57,25 +57,31 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Profile not found. Please contact support.'),
-            ),
+                content: Text('Profile not found. Please contact support.')),
           );
         }
         return;
       }
 
       final userData = doc.data() as Map<String, dynamic>;
+      final role = (userData['role'] ?? 'intern').toString();
 
       appState.setCurrentUser(
         userData['name'] ?? '',
         userData['email'] ?? user.email ?? '',
-        userData['role'] ?? 'intern',
+        role,
         userData['specialization'] ?? userData['specialty'] ?? '',
       );
-      appState.setUserRole(userData['role'] ?? 'intern');
+      appState.setUserRole(role);
 
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/dashboard');
+      if (!mounted) return;
+
+      if (role == 'admin') {
+        Navigator.pushReplacementNamed(context, '/admin-dashboard');
+      } else if (role == 'supervisor') {
+        Navigator.pushReplacementNamed(context, '/supervisor-dashboard');
+      } else {
+        Navigator.pushReplacementNamed(context, '/intern-dashboard');
       }
     } on FirebaseAuthException catch (e) {
       String message = 'Login failed';
@@ -101,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       if (mounted) {
-        Scaff oldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message)),
         );
       }

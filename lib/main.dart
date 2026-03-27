@@ -46,12 +46,15 @@ class NoRaApp extends StatelessWidget {
       locale: appState.locale,
       initialRoute: '/splash',
       routes: {
-        '/splash': (context) => const SplashScreen(), // ✅ جديد
+        '/splash': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
         '/forgot-password': (context) => const ForgotPasswordScreen(),
         '/dashboard': (context) => const DashboardRouter(),
         '/fintech': (context) => const ModernFintechDashboard(),
+        '/admin-dashboard': (context) => const AdminDashboard(),
+        '/supervisor-dashboard': (context) => const SupervisorDashboard(),
+        '/intern-dashboard': (context) => const InternDashboard(),
       },
       builder: (context, child) {
         return Directionality(
