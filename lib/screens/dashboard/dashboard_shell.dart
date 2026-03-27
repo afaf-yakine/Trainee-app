@@ -178,6 +178,15 @@ class _DashboardShellState extends State<DashboardShell> {
       items.add(const _NavItemData(Icons.assignment, 'assignments'));
     }
 
+    if (appState.userRole == 'supervisor') {
+      items.add(const _NavItemData(Icons.assignment, 'internships'));
+      items.add(const _NavItemData(Icons.assignment, 'tasks'));
+    }
+
+    if (appState.userRole == 'intern') {
+      items.add(const _NavItemData(Icons.assignment, 'tasks'));
+    }
+
     items.add(const _NavItemData(Icons.person, 'profile'));
     return items;
   }
