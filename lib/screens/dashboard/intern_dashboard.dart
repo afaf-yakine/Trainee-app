@@ -20,40 +20,6 @@ class _InternDashboardState extends State<InternDashboard> {
 
   String? get _internId => FirebaseAuth.instance.currentUser?.uid;
 
-  @override
-  Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
-    final internId = _internId;
-
-    final stats = {
-      'tasks_completed': appState.currentUserStats['tasksCompleted'] ?? '0/0',
-      'attendance': appState.currentUserStats['attendance'] ?? '0%',
-      'days_left': appState.currentUserStats['daysLeft'] ?? '0',
-    };
-
-    final documents = appState.currentUserDocuments;
-
-    final pages = [
-      _buildDashboardHome(appState, stats, internId),
-      _buildTasksPage(appState, internId),
-      _buildAttendancePage(),
-      _buildDocumentsPage(documents),
-      _buildProfilePage(appState),
-    ];
-
-    return DashboardShell(
-      title: appState.translate('intern'),
-      selectedIndex: _currentIndex,
-      onItemSelected: (index) {
-        setState(() {
-          _currentIndex = index;
-        });
-      },
-      pages: pages,
-      child: pages[_currentIndex],
-    );
-  }
-
   Future<List<Map<String, dynamic>>> _loadInternTasks(String internId) async {
     final assignmentsSnapshot = await FirebaseFirestore.instance
         .collection('internship_assignments')
@@ -103,50 +69,113 @@ class _InternDashboardState extends State<InternDashboard> {
     }).toList();
   }
 
-  Widget _buildDashboardHome(
-    AppState appState,
-    Map<String, String> stats,
-    String? internId,
-  ) {
+  Future<Map<String, String>> _loadInternStats(String internId) async {
+    final tasks = await _loadInternTasks(internId);
+
+    final completedCount = tasks.where((task) {
+      final status = (task['status'] ?? '').toString().toLowerCase();
+      return status == 'completed' || status == 'done';
+    }).length;
+
+    final totalCount = tasks.length;
+
+    return {
+      'tasks_completed': '$completedCount/$totalCount',
+      'attendance': Provider.of<AppState>(context, listen: false)
+              .currentUserStats['attendance'] ??
+          '0%',
+      'days_left': Provider.of<AppState>(context, listen: false)
+              .currentUserStats['daysLeft'] ??
+          '0',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final internId = _internId;
+
+    final documents = appState.currentUserDocuments;
+
+    final pages = [
+      _buildDashboardHome(appState, internId),
+      _buildTasksPage(appState, internId),
+      _buildAttendancePage(),
+      _buildDocumentsPage(documents),
+      _buildProfilePage(appState),
+    ];
+
+    return DashboardShell(
+      title: appState.translate('intern'),
+      selectedIndex: _currentIndex,
+      onItemSelected: (index) {
+        setState(() {
+          _currentIndex = index;
+        });
+      },
+      pages: pages,
+      child: pages[_currentIndex],
+    );
+  }
+
+  Widget _buildDashboardHome(AppState appState, String? internId) {
     final isNarrow = MediaQuery.of(context).size.width < 1100;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildWelcomeHeader(appState),
-          const SizedBox(height: 32),
-          if (!isNarrow)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    children: [
-                      _buildStatsRow(appState, stats),
-                      const SizedBox(height: 24),
-                      _buildTaskList(appState, internId),
-                    ],
-                  ),
+    return FutureBuilder<Map<String, String>>(
+      future: internId == null
+          ? Future.value({
+              'tasks_completed': '0/0',
+              'attendance': appState.currentUserStats['attendance'] ?? '0%',
+              'days_left': appState.currentUserStats['daysLeft'] ?? '0',
+            })
+          : _loadInternStats(internId),
+      builder: (context, snapshot) {
+        final stats = snapshot.data ??
+            {
+              'tasks_completed': '0/0',
+              'attendance': appState.currentUserStats['attendance'] ?? '0%',
+              'days_left': appState.currentUserStats['daysLeft'] ?? '0',
+            };
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildWelcomeHeader(appState),
+              const SizedBox(height: 32),
+              if (!isNarrow)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        children: [
+                          _buildStatsRow(appState, stats),
+                          const SizedBox(height: 24),
+                          _buildTaskList(appState, internId),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    Expanded(child: _buildQuickProfile(appState)),
+                  ],
+                )
+              else
+                Column(
+                  children: [
+                    _buildStatsRow(appState, stats),
+                    const SizedBox(height: 24),
+                    _buildQuickProfile(appState),
+                    const SizedBox(height: 24),
+                    _buildTaskList(appState, internId),
+                  ],
                 ),
-                const SizedBox(width: 24),
-                Expanded(child: _buildQuickProfile(appState)),
-              ],
-            )
-          else
-            Column(
-              children: [
-                _buildStatsRow(appState, stats),
-                const SizedBox(height: 24),
-                _buildQuickProfile(appState),
-                const SizedBox(height: 24),
-                _buildTaskList(appState, internId),
-              ],
-            ),
-        ],
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -450,7 +479,6 @@ class _InternDashboardState extends State<InternDashboard> {
           itemCount: tasks.length,
           itemBuilder: (context, index) {
             final task = tasks[index];
-
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
               shape: RoundedRectangleBorder(
@@ -548,14 +576,10 @@ class _InternDashboardState extends State<InternDashboard> {
               ),
               const SizedBox(height: 32),
               _buildProfileInfoCard(appState, [
-                {
-                  'label': appState.translate('email'),
-                  'value': data['email'] ?? ''
-                },
+                {'label': appState.translate('email'), 'value': data['email'] ?? ''},
                 {
                   'label': appState.translate('internship_duration'),
-                  'value':
-                      '${data['startDate'] ?? 'N/A'} - ${data['endDate'] ?? 'N/A'}'
+                  'value': '${data['startDate'] ?? 'N/A'} - ${data['endDate'] ?? 'N/A'}'
                 },
                 {
                   'label': appState.translate('supervisor_name'),
