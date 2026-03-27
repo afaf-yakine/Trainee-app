@@ -2,30 +2,60 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../providers/app_state.dart';
 
 class DashboardShell extends StatefulWidget {
-  final Widget child;
+  final Widget? child;
   final String title;
   final List<Widget>? pages;
   final int selectedIndex;
   final Function(int)? onItemSelected;
+  final int initialIndex;
 
   const DashboardShell({
     super.key,
-    required this.child,
     required this.title,
+    this.child,
     this.pages,
     this.selectedIndex = 0,
     this.onItemSelected,
+    this.initialIndex = 0,
   });
 
   @override
   State<DashboardShell> createState() => _DashboardShellState();
 }
 
+class _NavItemData {
+  final IconData icon;
+  final String labelKey;
+
+  const _NavItemData(this.icon, this.labelKey);
+}
+
 class _DashboardShellState extends State<DashboardShell> {
   final GlobalKey _notificationKey = GlobalKey();
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex =
+        widget.pages != null ? widget.initialIndex : widget.selectedIndex;
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.pages != null && oldWidget.initialIndex != widget.initialIndex) {
+      _currentIndex = widget.initialIndex;
+    }
+    if (widget.pages == null &&
+        oldWidget.selectedIndex != widget.selectedIndex) {
+      _currentIndex = widget.selectedIndex;
+    }
+  }
 
   void _showNotificationsPanel(BuildContext context, AppState appState) async {
     final RenderBox button =
@@ -41,7 +71,6 @@ class _DashboardShellState extends State<DashboardShell> {
       Offset.zero & overlay.size,
     );
 
-    // Fetch unread notifications from Firestore and mark as read
     final userId = FirebaseAuth.instance.currentUser?.uid;
     if (userId != null) {
       final batch = FirebaseFirestore.instance.batch();
@@ -78,9 +107,10 @@ class _DashboardShellState extends State<DashboardShell> {
                   child: Text(
                     appState.translate('notifications'),
                     style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18),
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
                   ),
                 ),
                 const Divider(color: Colors.white24),
@@ -96,8 +126,10 @@ class _DashboardShellState extends State<DashboardShell> {
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       return const Padding(
                         padding: EdgeInsets.all(16.0),
-                        child: Text('No notifications',
-                            style: TextStyle(color: Colors.white70)),
+                        child: Text(
+                          'No notifications',
+                          style: TextStyle(color: Colors.white70),
+                        ),
                       );
                     }
 
@@ -105,14 +137,22 @@ class _DashboardShellState extends State<DashboardShell> {
                       children: snapshot.data!.docs.map((doc) {
                         final data = doc.data() as Map<String, dynamic>;
                         return ListTile(
-                          title: Text(data['title'] ?? '',
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 14)),
-                          subtitle: Text(data['message'] ?? '',
-                              style: const TextStyle(
-                                  color: Colors.white70, fontSize: 12),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis),
+                          title: Text(
+                            data['title'] ?? '',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                          subtitle: Text(
+                            data['message'] ?? '',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         );
                       }).toList(),
                     );
@@ -126,10 +166,35 @@ class _DashboardShellState extends State<DashboardShell> {
     );
   }
 
+  List<_NavItemData> _buildMenu(AppState appState) {
+    final items = <_NavItemData>[
+      const _NavItemData(Icons.dashboard, 'dashboard'),
+      // const _NavItemData(Icons.task_alt, 'tasks'),
+      // const _NavItemData(Icons.calendar_month, 'attendance'),
+      // const _NavItemData(Icons.folder, 'documents'),
+    ];
+
+    if (appState.userRole == 'admin') {
+      items.add(const _NavItemData(Icons.assignment, 'assignments'));
+    }
+
+    items.add(const _NavItemData(Icons.person, 'profile'));
+    return items;
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isMobile = MediaQuery.of(context).size.width < 900;
+
+    final pages = widget.pages;
+    final safeIndex = _currentIndex.clamp(
+      0,
+      pages != null && pages.isNotEmpty ? pages.length - 1 : 0,
+    );
+
+    final displayedPage =
+        pages != null && pages.isNotEmpty ? pages[safeIndex] : widget.child;
 
     return Container(
       decoration: const BoxDecoration(
@@ -140,7 +205,7 @@ class _DashboardShellState extends State<DashboardShell> {
         ),
       ),
       child: Scaffold(
-        backgroundColor: Colors.transparent, // Let gradient show through
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -148,10 +213,11 @@ class _DashboardShellState extends State<DashboardShell> {
           title: Text(
             widget.title,
             style: const TextStyle(
-                fontWeight: FontWeight.bold, color: Colors.white),
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
           actions: [
-            // Notification Bell
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('users')
@@ -160,8 +226,9 @@ class _DashboardShellState extends State<DashboardShell> {
                   .where('isRead', isEqualTo: false)
                   .snapshots(),
               builder: (context, snapshot) {
-                int unreadCount =
+                final unreadCount =
                     snapshot.hasData ? snapshot.data!.docs.length : 0;
+
                 return Stack(
                   alignment: Alignment.center,
                   children: [
@@ -187,9 +254,10 @@ class _DashboardShellState extends State<DashboardShell> {
                           child: Text(
                             '$unreadCount',
                             style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold),
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -202,10 +270,10 @@ class _DashboardShellState extends State<DashboardShell> {
             PopupMenuButton<String>(
               icon: const Icon(Icons.language, color: Colors.white),
               onSelected: (code) => appState.setLocale(code),
-              itemBuilder: (context) => [
-                const PopupMenuItem(value: 'en', child: Text('🇬🇧 English')),
-                const PopupMenuItem(value: 'fr', child: Text('🇫🇷 Français')),
-                const PopupMenuItem(value: 'ar', child: Text('🇸🇦 العربية')),
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'en', child: Text('🇬🇧 English')),
+                PopupMenuItem(value: 'fr', child: Text('🇫🇷 Français')),
+                PopupMenuItem(value: 'ar', child: Text('🇸🇦 العربية')),
               ],
             ),
             const SizedBox(width: 16),
@@ -214,23 +282,22 @@ class _DashboardShellState extends State<DashboardShell> {
         drawer: isMobile
             ? Drawer(
                 child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF0A1F44), Color(0xFF1E3C72)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF0A1F44), Color(0xFF1E3C72)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                   ),
+                  child: _buildSidebar(context, appState, isDrawer: true),
                 ),
-                child: _buildNavItems(context, appState),
-              ))
+              )
             : null,
         body: Row(
           children: [
-            if (!isMobile) _buildSidebar(context, appState),
+            if (!isMobile) _buildSidebar(context, appState, isDrawer: false),
             Expanded(
-              child: widget.pages != null
-                  ? widget.pages![widget.selectedIndex]
-                  : widget.child,
+              child: displayedPage ?? const SizedBox.shrink(),
             ),
           ],
         ),
@@ -238,113 +305,99 @@ class _DashboardShellState extends State<DashboardShell> {
     );
   }
 
-  Widget _buildSidebar(BuildContext context, AppState appState) {
-    return Container(
-      width: 260,
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.2), // Subtle overlay on gradient
-        border: const Border(right: BorderSide(color: Colors.white10)),
-      ),
-      child: _buildNavItems(context, appState),
-    );
-  }
-
-  Widget _buildNavItems(BuildContext context, AppState appState) {
-    return Column(
-      children: [
-        const SizedBox(height: 40),
-        // Custom Application Logo
-        Image.asset(
-          'assets/images/logo.png',
-          width: 80,
-          height: 80,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) =>
-              const Icon(Icons.school, size: 60, color: Colors.white),
-        ),
-        const SizedBox(height: 40),
-        _navItem(context, appState, Icons.dashboard, 'dashboard', 0),
-        _navItem(context, appState, Icons.task_alt, 'tasks', 1),
-        _navItem(context, appState, Icons.calendar_month, 'attendance', 2),
-        _navItem(context, appState, Icons.folder, 'documents', 3),
-        const Spacer(),
-        _navItem(context, appState, Icons.person, 'profile', 4),
-        _logoutItem(context, appState),
-        const SizedBox(height: 24),
-      ],
-    );
-  }
-
-  Widget _navItem(
+  Widget _buildSidebar(
     BuildContext context,
-    AppState appState,
-    IconData icon,
-    String key,
-    int index,
-  ) {
-    final isSelected = widget.selectedIndex == index;
+    AppState appState, {
+    required bool isDrawer,
+  }) {
+    final menu = _buildMenu(appState);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: InkWell(
-        onTap: () {
-          if (widget.onItemSelected != null) {
-            widget.onItemSelected!(index);
-          }
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? Colors.white.withOpacity(0.15)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            border: isSelected ? Border.all(color: Colors.white24) : null,
+    return Container(
+      width: isDrawer ? double.infinity : 260,
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.2),
+        border: isDrawer
+            ? null
+            : const Border(right: BorderSide(color: Colors.white10)),
+      ),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const SizedBox(height: 40),
+          Center(
+            child: Image.asset(
+              'assets/images/logo.png',
+              width: 80,
+              height: 80,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.school, size: 60, color: Colors.white),
+            ),
           ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? Colors.white : Colors.white70,
-              ),
-              const SizedBox(width: 16),
-              Text(
-                appState.translate(key),
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          const SizedBox(height: 40),
+          ...menu.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            final isSelected = _currentIndex == index;
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: ListTile(
+                selected: isSelected,
+                selectedTileColor: Colors.white.withOpacity(0.15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                leading: Icon(
+                  item.icon,
                   color: isSelected ? Colors.white : Colors.white70,
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+                title: Text(
+                  appState.translate(item.labelKey),
+                  style: TextStyle(
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? Colors.white : Colors.white70,
+                  ),
+                ),
+                onTap: () {
+                  setState(() {
+                    _currentIndex = index;
+                  });
 
-  Widget _logoutItem(BuildContext context, AppState appState) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: InkWell(
-        onTap: () {
-          appState.setUserRole(null);
-          Navigator.pushNamedAndRemoveUntil(
-              context, '/login', (route) => false);
-        },
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: const [
-              Icon(Icons.logout, color: Colors.redAccent),
-              SizedBox(width: 16),
-              Text(
+                  final onItemSelected = widget.onItemSelected;
+                  if (onItemSelected != null) {
+                    onItemSelected(index);
+                  }
+
+                  if (isDrawer && Navigator.of(context).canPop()) {
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+            );
+          }),
+          const SizedBox(height: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: Colors.redAccent),
+              title: const Text(
                 'Logout',
                 style: TextStyle(color: Colors.redAccent),
               ),
-            ],
+              onTap: () {
+                appState.setUserRole(null);
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (route) => false,
+                );
+              },
+            ),
           ),
-        ),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }

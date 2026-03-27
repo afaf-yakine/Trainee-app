@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'assignments_page.dart';
 
 import '../../providers/app_state.dart';
 import 'dashboard_shell.dart';
@@ -141,8 +142,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
     await _loadInitialData();
   }
 
-  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>> _getDepartments() async {
-    final snapshot = await _firestore.collection('departments').orderBy('name').get();
+  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+      _getDepartments() async {
+    final snapshot =
+        await _firestore.collection('departments').orderBy('name').get();
     return snapshot.docs;
   }
 
@@ -183,7 +186,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   children: [
                     TextField(
                       controller: firstNameController,
-                      decoration: const InputDecoration(labelText: 'First Name'),
+                      decoration:
+                          const InputDecoration(labelText: 'First Name'),
                     ),
                     const SizedBox(height: 12),
                     TextField(
@@ -198,7 +202,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     const SizedBox(height: 12),
                     TextField(
                       controller: specializationController,
-                      decoration: const InputDecoration(labelText: 'Specialization'),
+                      decoration:
+                          const InputDecoration(labelText: 'Specialization'),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
@@ -206,8 +211,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       decoration: const InputDecoration(labelText: 'Role'),
                       items: const [
                         DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                        DropdownMenuItem(value: 'supervisor', child: Text('Supervisor')),
-                        DropdownMenuItem(value: 'intern', child: Text('Intern')),
+                        DropdownMenuItem(
+                            value: 'supervisor', child: Text('Supervisor')),
+                        DropdownMenuItem(
+                            value: 'intern', child: Text('Intern')),
                       ],
                       onChanged: (value) {
                         if (value != null) {
@@ -218,7 +225,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       value: selectedDepartmentId,
-                      decoration: const InputDecoration(labelText: 'Department'),
+                      decoration:
+                          const InputDecoration(labelText: 'Department'),
                       items: [
                         const DropdownMenuItem<String>(
                           value: null,
@@ -228,7 +236,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           final deptData = dept.data();
                           return DropdownMenuItem<String>(
                             value: dept.id,
-                            child: Text((deptData['name'] ?? 'Unnamed').toString()),
+                            child: Text(
+                                (deptData['name'] ?? 'Unnamed').toString()),
                           );
                         }),
                       ],
@@ -241,12 +250,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           return;
                         }
 
-                        final dept = departments.firstWhere((d) => d.id == value);
+                        final dept =
+                            departments.firstWhere((d) => d.id == value);
                         final deptData = dept.data();
 
                         setDialogState(() {
                           selectedDepartmentId = value;
-                          selectedDepartmentName = (deptData['name'] ?? '').toString();
+                          selectedDepartmentName =
+                              (deptData['name'] ?? '').toString();
                         });
                       },
                     ),
@@ -308,7 +319,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(departmentDoc == null ? 'Add Department' : 'Edit Department'),
+          title: Text(
+              departmentDoc == null ? 'Add Department' : 'Edit Department'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -348,7 +360,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     'createdAt': FieldValue.serverTimestamp(),
                   });
                 } else {
-                  await _firestore.collection('departments').doc(departmentDoc.id).update(payload);
+                  await _firestore
+                      .collection('departments')
+                      .doc(departmentDoc.id)
+                      .update(payload);
                 }
 
                 if (dialogContext.mounted) Navigator.pop(dialogContext);
@@ -369,9 +384,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
 
-    return DashboardShell(
-      title: appState.translate('admin'),
-      child: SingleChildScrollView(
+    final pages = [
+      SingleChildScrollView(
         controller: _scrollController,
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -394,6 +408,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
       ),
+      const AssignmentsPage(),
+      const Center(
+        child: Text(
+          'PROFILE PLACEHOLDER',
+          style: TextStyle(fontSize: 24, color: Colors.white),
+        ),
+      ),
+    ];
+
+    return DashboardShell(
+      title: appState.translate('admin'),
+      pages: pages,
+      initialIndex: 0,
     );
   }
 
@@ -508,7 +535,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           const SizedBox(height: 16),
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: _firestore.collection('departments').orderBy('name').snapshots(),
+            stream: _firestore
+                .collection('departments')
+                .orderBy('name')
+                .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Text('Error: ${snapshot.error}');
@@ -538,17 +568,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   final description = (data['description'] ?? '').toString();
 
                   return ListTile(
-                    title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    title: Text(name,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text(description),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
                           icon: const Icon(Icons.edit_outlined),
-                          onPressed: () => _openDepartmentDialog(departmentDoc: dept),
+                          onPressed: () =>
+                              _openDepartmentDialog(departmentDoc: dept),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          icon: const Icon(Icons.delete_outline,
+                              color: Colors.red),
                           onPressed: () async {
                             await _deleteDepartment(dept.id);
                           },
@@ -620,9 +653,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     final doc = _users[index];
                     final data = doc.data();
                     final role = (data['role'] ?? 'intern').toString();
-                    final fullName = (data['name'] ?? data['fullName'] ?? 'No Name').toString();
+                    final fullName =
+                        (data['name'] ?? data['fullName'] ?? 'No Name')
+                            .toString();
                     final email = (data['email'] ?? '').toString();
-                    final departmentName = (data['departmentName'] ?? 'No department').toString();
+                    final departmentName =
+                        (data['departmentName'] ?? 'No department').toString();
 
                     return ListTile(
                       leading: CircleAvatar(
@@ -636,7 +672,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         fullName,
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      subtitle: Text('$email\nRole: $role\nDepartment: $departmentName'),
+                      subtitle: Text(
+                          '$email\nRole: $role\nDepartment: $departmentName'),
                       isThreeLine: true,
                       trailing: PopupMenuButton<String>(
                         onSelected: (value) async {
