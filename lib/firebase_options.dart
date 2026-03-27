@@ -41,46 +41,50 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAA9DnOszGPhMnvfYUHWF4BIA4xAr29k3M',
-    appId: '1:224906061074:web:cb3738e8fd4fc2ad53ffcb',
-    messagingSenderId: '224906061074',
-    projectId: 'test-database-d1555',
-    authDomain: 'test-database-d1555.firebaseapp.com',
-    storageBucket: 'test-database-d1555.firebasestorage.app',
+    apiKey: 'AIzaSyDHlrEoXO3LQypfOTH0Ifx0wg7RVEE5rD8',
+    appId: '1:567554381312:web:7fc4b5f386d3b0e7ad2ae5',
+    messagingSenderId: '567554381312',
+    projectId: 'condor-application-14288',
+    authDomain: 'condor-application-14288.firebaseapp.com',
+    storageBucket: 'condor-application-14288.firebasestorage.app',
+    measurementId: 'G-HYW4J7DW7E',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBA9bcQg7JMOR5mH3nZlqt0t9o_hBpcY48',
-    appId: '1:224906061074:android:0f485ba35a9b8bbe53ffcb',
-    messagingSenderId: '224906061074',
-    projectId: 'test-database-d1555',
-    storageBucket: 'test-database-d1555.firebasestorage.app',
+    apiKey: 'AIzaSyBJglmG5U3Z8p8Sn5cdr2B1DViJt4XKhTM',
+    appId: '1:567554381312:android:d8f662db2fe33e6aad2ae5',
+    messagingSenderId: '567554381312',
+    projectId: 'condor-application-14288',
+    storageBucket: 'condor-application-14288.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBYCNfkvT7V5T2HPab_SvNTmEJxLDnfB9c',
-    appId: '1:224906061074:ios:6ac1f6f6c52f0e1553ffcb',
-    messagingSenderId: '224906061074',
-    projectId: 'test-database-d1555',
-    storageBucket: 'test-database-d1555.firebasestorage.app',
+    apiKey: 'AIzaSyBtO6bY1hDNdrcWlGp2CL7LisaN93xmBYM',
+    appId: '1:567554381312:ios:53727ad963d3ba2bad2ae5',
+    messagingSenderId: '567554381312',
+    projectId: 'condor-application-14288',
+    storageBucket: 'condor-application-14288.firebasestorage.app',
+    iosClientId: '567554381312-ah3j98id4mushkvi66k6va4hl18u97ka.apps.googleusercontent.com',
     iosBundleId: 'com.example.aoo',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBYCNfkvT7V5T2HPab_SvNTmEJxLDnfB9c',
-    appId: '1:224906061074:ios:6ac1f6f6c52f0e1553ffcb',
-    messagingSenderId: '224906061074',
-    projectId: 'test-database-d1555',
-    storageBucket: 'test-database-d1555.firebasestorage.app',
+    apiKey: 'AIzaSyBtO6bY1hDNdrcWlGp2CL7LisaN93xmBYM',
+    appId: '1:567554381312:ios:53727ad963d3ba2bad2ae5',
+    messagingSenderId: '567554381312',
+    projectId: 'condor-application-14288',
+    storageBucket: 'condor-application-14288.firebasestorage.app',
+    iosClientId: '567554381312-ah3j98id4mushkvi66k6va4hl18u97ka.apps.googleusercontent.com',
     iosBundleId: 'com.example.aoo',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAA9DnOszGPhMnvfYUHWF4BIA4xAr29k3M',
-    appId: '1:224906061074:web:da9024399841c93d53ffcb',
-    messagingSenderId: '224906061074',
-    projectId: 'test-database-d1555',
-    authDomain: 'test-database-d1555.firebaseapp.com',
-    storageBucket: 'test-database-d1555.firebasestorage.app',
+    apiKey: 'AIzaSyDHlrEoXO3LQypfOTH0Ifx0wg7RVEE5rD8',
+    appId: '1:567554381312:web:5437cc5f78d0977dad2ae5',
+    messagingSenderId: '567554381312',
+    projectId: 'condor-application-14288',
+    authDomain: 'condor-application-14288.firebaseapp.com',
+    storageBucket: 'condor-application-14288.firebasestorage.app',
+    measurementId: 'G-RV7Q41RS72',
   );
 }

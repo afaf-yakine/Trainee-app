@@ -39,41 +39,77 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
       );
 
-      if (credential.user != null) {
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(credential.user!.uid)
-            .get();
+      final user = credential.user;
+      if (user == null) {
+        throw FirebaseAuthException(
+          code: 'user-null',
+          message: 'User not found after sign in.',
+        );
+      }
 
-        if (doc.exists) {
-          final userData = doc.data()!;
-          appState.setCurrentUser(
-            userData['name'] ?? '',
-            userData['email'] ?? '',
-            userData['role'] ?? 'intern',
-            userData['specialization'] ?? userData['specialty'] ?? '',
-          );
-          appState.setUserRole(userData['role'] ?? 'intern');
-        }
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
 
+      if (!doc.exists) {
+        await FirebaseAuth.instance.signOut();
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/dashboard');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile not found. Please contact support.'),
+            ),
+          );
         }
+        return;
+      }
+
+      final userData = doc.data() as Map<String, dynamic>;
+
+      appState.setCurrentUser(
+        userData['name'] ?? '',
+        userData['email'] ?? user.email ?? '',
+        userData['role'] ?? 'intern',
+        userData['specialization'] ?? userData['specialty'] ?? '',
+      );
+      appState.setUserRole(userData['role'] ?? 'intern');
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/dashboard');
       }
     } on FirebaseAuthException catch (e) {
       String message = 'Login failed';
-      if (e.code == 'user-not-found')
-        message = 'No user found with this email.';
-      else if (e.code == 'wrong-password') message = 'Incorrect password.';
+
+      switch (e.code) {
+        case 'invalid-email':
+          message = 'Invalid email format.';
+          break;
+        case 'wrong-password':
+        case 'user-not-found':
+        case 'invalid-credential':
+        case 'INVALID_LOGIN_CREDENTIALS':
+          message = 'Invalid email or password.';
+          break;
+        case 'user-disabled':
+          message = 'This account has been disabled.';
+          break;
+        case 'operation-not-allowed':
+          message = 'Email/password login is not enabled.';
+          break;
+        default:
+          message = e.message ?? 'Login failed';
+      }
 
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(message)));
+        Scaff oldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

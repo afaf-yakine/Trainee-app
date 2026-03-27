@@ -1,26 +1,36 @@
 {
   "project_info": {
-    "project_number": "224906061074",
-    "project_id": "test-database-d1555",
-    "storage_bucket": "test-database-d1555.firebasestorage.app"
+    "project_number": "567554381312",
+    "project_id": "condor-application-14288",
+    "storage_bucket": "condor-application-14288.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:224906061074:android:0f485ba35a9b8bbe53ffcb",
+        "mobilesdk_app_id": "1:567554381312:android:d8f662db2fe33e6aad2ae5",
         "android_client_info": {
           "package_name": "com.example.aoo"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "567554381312-2n0ibd138j2kalrnh6hibi738hlvnu9j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyBA9bcQg7JMOR5mH3nZlqt0t9o_hBpcY48"
+          "current_key": "AIzaSyBJglmG5U3Z8p8Sn5cdr2B1DViJt4XKhTM"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "567554381312-2n0ibd138j2kalrnh6hibi738hlvnu9j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

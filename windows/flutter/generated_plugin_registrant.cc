@@ -9,10 +9,7 @@
 #include <cloud_firestore/cloud_firestore_plugin_c_api.h>
 #include <firebase_auth/firebase_auth_plugin_c_api.h>
 #include <firebase_core/firebase_core_plugin_c_api.h>
-<<<<<<< HEAD
 #include <firebase_storage/firebase_storage_plugin_c_api.h>
-=======
->>>>>>> 161abe8ff64d9e9f44877a747c1bda9bc1fb4575
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
   CloudFirestorePluginCApiRegisterWithRegistrar(
@@ -21,9 +18,6 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("FirebaseAuthPluginCApi"));
   FirebaseCorePluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FirebaseCorePluginCApi"));
-<<<<<<< HEAD
   FirebaseStoragePluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FirebaseStoragePluginCApi"));
-=======
->>>>>>> 161abe8ff64d9e9f44877a747c1bda9bc1fb4575
 }
