@@ -8,10 +8,17 @@ import '../../providers/app_state.dart';
 import 'dashboard_shell.dart';
 import 'supervisor_internships_page.dart';
 
-class SupervisorDashboard extends StatelessWidget {
+class SupervisorDashboard extends StatefulWidget {
   const SupervisorDashboard({super.key});
 
+  @override
+  State<SupervisorDashboard> createState() => _SupervisorDashboardState();
+}
+
+class _SupervisorDashboardState extends State<SupervisorDashboard> {
   String? get _supervisorId => FirebaseAuth.instance.currentUser?.uid;
+
+  int _selectedPage = 0;
 
   Future<int> _countInterns(String supervisorId) async {
     final snapshot = await FirebaseFirestore.instance
@@ -140,6 +147,7 @@ class SupervisorDashboard extends StatelessWidget {
       ),
       const SupervisorInternshipsPage(),
       SupervisorTasksPage(supervisorId: supervisorId),
+      SupervisorAttendancePage(supervisorId: supervisorId),
       const Center(
         child: Text(
           'PROFILE PLACEHOLDER',
@@ -151,7 +159,11 @@ class SupervisorDashboard extends StatelessWidget {
     return DashboardShell(
       title: appState.translate('supervisor'),
       pages: pages,
-      initialIndex: 0,
+      initialIndex: _selectedPage,
+      selectedIndex: _selectedPage,
+      onItemSelected: (index) {
+        setState(() => _selectedPage = index);
+      },
     );
   }
 
@@ -236,7 +248,7 @@ class SupervisorDashboard extends StatelessWidget {
                     DataColumn(label: Text(appState.translate('project'))),
                     DataColumn(label: Text(appState.translate('progress'))),
                     DataColumn(label: Text(appState.translate('status'))),
-                    DataColumn(label: Text(appState.translate('actions'))),
+                    const DataColumn(label: Text('Attendance')),
                   ],
                   rows: interns.map((doc) {
                     final data = doc.data();
@@ -273,9 +285,13 @@ class SupervisorDashboard extends StatelessWidget {
                         ),
                         DataCell(Text(status)),
                         DataCell(
-                          IconButton(
-                            icon: const Icon(Icons.more_vert),
-                            onPressed: () {},
+                          ElevatedButton(
+                            onPressed: () {
+                              setState(() {
+                                _selectedPage = 3;
+                              });
+                            },
+                            child: const Text('Open'),
                           ),
                         ),
                       ],
@@ -557,10 +573,8 @@ class _SupervisorTasksPageState extends State<SupervisorTasksPage> {
                       value: taskStatus,
                       decoration: const InputDecoration(labelText: 'Status'),
                       items: const [
-                        DropdownMenuItem(
-                            value: 'active', child: Text('Active')),
-                        DropdownMenuItem(
-                            value: 'paused', child: Text('Paused')),
+                        DropdownMenuItem(value: 'active', child: Text('Active')),
+                        DropdownMenuItem(value: 'paused', child: Text('Paused')),
                         DropdownMenuItem(
                             value: 'completed', child: Text('Completed')),
                       ],
@@ -681,8 +695,10 @@ class _SupervisorTasksPageState extends State<SupervisorTasksPage> {
   Widget build(BuildContext context) {
     if (widget.supervisorId == null) {
       return const Center(
-        child: Text('No supervisor logged in',
-            style: TextStyle(color: Colors.white)),
+        child: Text(
+          'No supervisor logged in',
+          style: TextStyle(color: Colors.white),
+        ),
       );
     }
 
@@ -798,6 +814,374 @@ class _SupervisorTasksPageState extends State<SupervisorTasksPage> {
                               itemBuilder: (context) => const [
                                 PopupMenuItem(
                                     value: 'open', child: Text('Open')),
+                                PopupMenuItem(
+                                    value: 'edit', child: Text('Edit')),
+                                PopupMenuItem(
+                                    value: 'delete', child: Text('Delete')),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SupervisorAttendancePage extends StatefulWidget {
+  final String? supervisorId;
+
+  const SupervisorAttendancePage({super.key, required this.supervisorId});
+
+  @override
+  State<SupervisorAttendancePage> createState() =>
+      _SupervisorAttendancePageState();
+}
+
+class _SupervisorAttendancePageState extends State<SupervisorAttendancePage> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<void> _openAttendanceDialog({
+    String? docId,
+    Map<String, dynamic>? existingData,
+  }) async {
+    if (widget.supervisorId == null) return;
+
+    final internsSnapshot = await _firestore
+        .collection('users')
+        .where('role', isEqualTo: 'intern')
+        .where('assignedSupervisorId', isEqualTo: widget.supervisorId)
+        .get();
+
+    if (!mounted) return;
+
+    final noteController = TextEditingController(
+      text: (existingData?['note'] ?? '').toString(),
+    );
+
+    String? selectedInternId = (existingData?['internId'] ?? '').toString();
+    String selectedInternName =
+        (existingData?['internName'] ?? '').toString();
+    String selectedStatus =
+        (existingData?['status'] ?? 'present').toString();
+    String selectedInternshipId =
+        (existingData?['internshipId'] ?? '').toString();
+    String selectedInternshipTitle =
+        (existingData?['internshipTitle'] ?? '').toString();
+
+    DateTime selectedDate = DateTime.now();
+    final rawDate = existingData?['date'];
+    if (rawDate is Timestamp) {
+      selectedDate = rawDate.toDate();
+    }
+
+    bool saving = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> pickDate() async {
+              final picked = await showDatePicker(
+                context: dialogContext,
+                initialDate: selectedDate,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2100),
+              );
+              if (picked != null) setDialogState(() => selectedDate = picked);
+            }
+
+            return AlertDialog(
+              title: Text(docId == null ? 'Add Attendance' : 'Edit Attendance'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: selectedInternId,
+                      decoration: const InputDecoration(labelText: 'Intern'),
+                      items: internsSnapshot.docs.map((doc) {
+                        final data = doc.data();
+                        final name = (data['name'] ??
+                                '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}')
+                            .toString()
+                            .trim();
+                        return DropdownMenuItem(
+                          value: doc.id,
+                          child: Text(name.isEmpty ? 'No Name' : name),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          selectedInternId = value;
+                          final match = internsSnapshot.docs
+                              .where((d) => d.id == value)
+                              .toList();
+                          selectedInternName = match.isNotEmpty
+                              ? ((match.first.data()['name'] ??
+                                      '${match.first.data()['firstName'] ?? ''} ${match.first.data()['lastName'] ?? ''}')
+                                  .toString()
+                                  .trim())
+                              : '';
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: selectedStatus,
+                      decoration: const InputDecoration(labelText: 'Status'),
+                      items: const [
+                        DropdownMenuItem(
+                            value: 'present', child: Text('Present')),
+                        DropdownMenuItem(
+                            value: 'absent', child: Text('Absent')),
+                        DropdownMenuItem(value: 'late', child: Text('Late')),
+                        DropdownMenuItem(
+                            value: 'excused', child: Text('Excused')),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() => selectedStatus = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Date: ${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}',
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: pickDate,
+                          child: const Text('Pick Date'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: noteController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        labelText: 'Note',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          if (selectedInternId == null ||
+                              selectedInternId!.isEmpty) return;
+
+                          setDialogState(() => saving = true);
+                          try {
+                            final attendanceId =
+                                '${widget.supervisorId}_${selectedInternId}_${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+
+                            await _firestore
+                                .collection('attendance_sessions')
+                                .doc(attendanceId)
+                                .set({
+                              'uid': attendanceId,
+                              'supervisorId': widget.supervisorId,
+                              'internId': selectedInternId,
+                              'internName': selectedInternName,
+                              'internshipId': selectedInternshipId,
+                              'internshipTitle': selectedInternshipTitle,
+                              'date': Timestamp.fromDate(
+                                DateTime(
+                                  selectedDate.year,
+                                  selectedDate.month,
+                                  selectedDate.day,
+                                ),
+                              ),
+                              'status': selectedStatus,
+                              'note': noteController.text.trim(),
+                              'createdBySupervisorId': widget.supervisorId,
+                              'createdAt': FieldValue.serverTimestamp(),
+                              'updatedAt': FieldValue.serverTimestamp(),
+                            }, SetOptions(merge: true));
+
+                            if (!mounted) return;
+                            Navigator.pop(dialogContext);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Attendance saved')),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
+                          } finally {
+                            if (mounted) setDialogState(() => saving = false);
+                          }
+                        },
+                  child: saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteAttendance(String docId) async {
+    await _firestore.collection('attendance_sessions').doc(docId).delete();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.supervisorId == null) {
+      return const Center(
+        child: Text(
+          'No supervisor logged in',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Attendance',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0A1F44),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _openAttendanceDialog(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Attendance'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _firestore
+                    .collection('attendance_sessions')
+                    .where('supervisorId', isEqualTo: widget.supervisorId)
+                    .orderBy('date', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  }
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final docs = snapshot.data!.docs;
+
+                  if (docs.isEmpty) {
+                    return const Center(
+                        child: Text('No attendance records found'));
+                  }
+
+                  return ListView.separated(
+                    itemCount: docs.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data();
+                      final internName =
+                          (data['internName'] ?? 'No Name').toString();
+                      final internshipTitle =
+                          (data['internshipTitle'] ?? 'No internship')
+                              .toString();
+                      final status = (data['status'] ?? 'present').toString();
+                      final note = (data['note'] ?? '').toString();
+                      final rawDate = data['date'];
+                      String dateText = '';
+                      if (rawDate is Timestamp) {
+                        final d = rawDate.toDate();
+                        dateText =
+                            '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+                      }
+
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    internName,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text('Internship: $internshipTitle'),
+                                  const SizedBox(height: 4),
+                                  Text('Date: $dateText'),
+                                  const SizedBox(height: 4),
+                                  Text('Status: $status'),
+                                  if (note.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text('Note: $note'),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            PopupMenuButton<String>(
+                              onSelected: (value) async {
+                                if (value == 'edit') {
+                                  await _openAttendanceDialog(
+                                    docId: doc.id,
+                                    existingData: data,
+                                  );
+                                } else if (value == 'delete') {
+                                  await _deleteAttendance(doc.id);
+                                }
+                              },
+                              itemBuilder: (context) => const [
                                 PopupMenuItem(
                                     value: 'edit', child: Text('Edit')),
                                 PopupMenuItem(

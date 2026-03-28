@@ -27,7 +27,6 @@ class _InternDashboardState extends State<InternDashboard> {
         .get();
 
     final assignments = assignmentsSnapshot.docs.map((d) => d.data()).toList();
-
     if (assignments.isEmpty) return [];
 
     final internshipIds = <String>{};
@@ -36,7 +35,6 @@ class _InternDashboardState extends State<InternDashboard> {
     for (final a in assignments) {
       final internshipId = (a['internshipId'] ?? '').toString();
       final supervisorId = (a['supervisorId'] ?? '').toString();
-
       if (internshipId.isNotEmpty) internshipIds.add(internshipId);
       if (supervisorId.isNotEmpty) supervisorIds.add(supervisorId);
     }
@@ -71,6 +69,7 @@ class _InternDashboardState extends State<InternDashboard> {
 
   Future<Map<String, String>> _loadInternStats(String internId) async {
     final tasks = await _loadInternTasks(internId);
+    final attendance = await _loadAttendanceStats(internId);
 
     final completedCount = tasks.where((task) {
       final status = (task['status'] ?? '').toString().toLowerCase();
@@ -81,26 +80,192 @@ class _InternDashboardState extends State<InternDashboard> {
 
     return {
       'tasks_completed': '$completedCount/$totalCount',
-      'attendance': Provider.of<AppState>(context, listen: false)
-              .currentUserStats['attendance'] ??
-          '0%',
+      'attendance': attendance['attendance'] ?? '0%',
+      'attendance_summary': attendance['attendance_summary'] ?? '0/0 present',
+      'attendance_records': attendance['attendance_records'] ?? '0',
       'days_left': Provider.of<AppState>(context, listen: false)
               .currentUserStats['daysLeft'] ??
           '0',
     };
   }
 
+  Future<Map<String, String>> _loadAttendanceStats(String internId) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('attendance_sessions')
+        .where('internId', isEqualTo: internId)
+        .get();
+
+    if (snapshot.docs.isEmpty) {
+      return {
+        'attendance': '0%',
+        'attendance_summary': '0/0 present',
+        'attendance_records': '0',
+      };
+    }
+
+    int presentCount = 0;
+    int totalCount = snapshot.docs.length;
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final status = (data['status'] ?? '').toString().toLowerCase();
+      if (status == 'present') {
+        presentCount++;
+      }
+    }
+
+    final percentage = totalCount == 0 ? 0.0 : (presentCount / totalCount) * 100.0;
+
+    return {
+      'attendance': '${percentage.toStringAsFixed(0)}%',
+      'attendance_summary': '$presentCount/$totalCount present',
+      'attendance_records': '$totalCount',
+    };
+  }
+
+  String _formatDueDate(dynamic dueDate) {
+    if (dueDate == null) return 'No due date';
+
+    DateTime? dateTime;
+    if (dueDate is Timestamp) {
+      dateTime = dueDate.toDate();
+    } else if (dueDate is DateTime) {
+      dateTime = dueDate;
+    } else {
+      return 'No due date';
+    }
+
+    return '${dateTime.year.toString().padLeft(4, '0')}-'
+        '${dateTime.month.toString().padLeft(2, '0')}-'
+        '${dateTime.day.toString().padLeft(2, '0')}';
+  }
+
+  Color _getPriorityColor(String? priority) {
+    switch (priority?.toLowerCase()) {
+      case 'high':
+        return Colors.red;
+      case 'medium':
+        return Colors.orange;
+      case 'low':
+        return Colors.green;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  Widget _taskCard(Map<String, dynamic> task) {
+    final title = (task['title'] ?? '').toString();
+    final description = (task['description'] ?? '').toString();
+    final status = (task['status'] ?? '').toString();
+    final priority = (task['priority'] ?? '').toString();
+    final dueDate = _formatDueDate(task['dueDate']);
+
+    Color statusColor;
+    switch (status.toLowerCase()) {
+      case 'completed':
+        statusColor = Colors.green;
+        break;
+      case 'in progress':
+        statusColor = Colors.orange;
+        break;
+      case 'pending':
+        statusColor = Colors.blue;
+        break;
+      case 'overdue':
+        statusColor = Colors.red;
+        break;
+      default:
+        statusColor = Colors.grey;
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        leading: const CircleAvatar(
+          backgroundColor: Color(0xFFF5F5F5),
+          child: Icon(Icons.task, color: Color(0xFF0A1F44)),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 6),
+            Text(
+              description.isEmpty ? 'No description' : description,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Text('Status: '),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    status.isEmpty ? 'Unknown' : status,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('Due: $dueDate'),
+          ],
+        ),
+        isThreeLine: true,
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: _getPriorityColor(priority).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            priority.isEmpty ? 'N/A' : priority,
+            style: TextStyle(
+              color: _getPriorityColor(priority),
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => TaskDetailsPage(taskId: task['taskId']),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final internId = _internId;
-
     final documents = appState.currentUserDocuments;
 
     final pages = [
       _buildDashboardHome(appState, internId),
       _buildTasksPage(appState, internId),
-      _buildAttendancePage(),
+      _buildAttendancePage(appState, internId),
       _buildDocumentsPage(documents),
       _buildProfilePage(appState),
     ];
@@ -109,9 +274,7 @@ class _InternDashboardState extends State<InternDashboard> {
       title: appState.translate('intern'),
       selectedIndex: _currentIndex,
       onItemSelected: (index) {
-        setState(() {
-          _currentIndex = index;
-        });
+        setState(() => _currentIndex = index);
       },
       pages: pages,
       child: pages[_currentIndex],
@@ -126,6 +289,10 @@ class _InternDashboardState extends State<InternDashboard> {
           ? Future.value({
               'tasks_completed': '0/0',
               'attendance': appState.currentUserStats['attendance'] ?? '0%',
+              'attendance_summary':
+                  appState.currentUserStats['attendance_summary'] ?? '0/0 present',
+              'attendance_records':
+                  appState.currentUserStats['attendance_records'] ?? '0',
               'days_left': appState.currentUserStats['daysLeft'] ?? '0',
             })
           : _loadInternStats(internId),
@@ -134,6 +301,10 @@ class _InternDashboardState extends State<InternDashboard> {
             {
               'tasks_completed': '0/0',
               'attendance': appState.currentUserStats['attendance'] ?? '0%',
+              'attendance_summary':
+                  appState.currentUserStats['attendance_summary'] ?? '0/0 present',
+              'attendance_records':
+                  appState.currentUserStats['attendance_records'] ?? '0',
               'days_left': appState.currentUserStats['daysLeft'] ?? '0',
             };
 
@@ -263,10 +434,8 @@ class _InternDashboardState extends State<InternDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 14, color: Colors.white70),
-                ),
+                Text(title,
+                    style: const TextStyle(fontSize: 14, color: Colors.white70)),
                 const SizedBox(height: 4),
                 Text(
                   value,
@@ -383,7 +552,6 @@ class _InternDashboardState extends State<InternDashboard> {
               }
 
               final tasks = snapshot.data!;
-
               if (tasks.isEmpty) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
@@ -392,45 +560,8 @@ class _InternDashboardState extends State<InternDashboard> {
               }
 
               return Column(
-                children: tasks.take(3).map((task) {
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const CircleAvatar(
-                      backgroundColor: Color(0xFFF5F5F5),
-                      child: Icon(Icons.task, color: Color(0xFF0A1F44)),
-                    ),
-                    title: Text(
-                      task['title'] ?? '',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(task['status'] ?? ''),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getPriorityColor(task['priority']).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        task['priority'] ?? '',
-                        style: TextStyle(
-                          color: _getPriorityColor(task['priority']),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => TaskDetailsPage(taskId: task['taskId']),
-                        ),
-                      );
-                    },
-                  );
+                children: tasks.take(3).map<Widget>((task) {
+                  return _taskCard(task);
                 }).toList(),
               );
             },
@@ -438,19 +569,6 @@ class _InternDashboardState extends State<InternDashboard> {
         ],
       ),
     );
-  }
-
-  Color _getPriorityColor(String? priority) {
-    switch (priority?.toLowerCase()) {
-      case 'high':
-        return Colors.red;
-      case 'medium':
-        return Colors.orange;
-      case 'low':
-        return Colors.green;
-      default:
-        return Colors.blue;
-    }
   }
 
   Widget _buildTasksPage(AppState appState, String? internId) {
@@ -469,7 +587,6 @@ class _InternDashboardState extends State<InternDashboard> {
         }
 
         final tasks = snapshot.data!;
-
         if (tasks.isEmpty) {
           return const Center(child: Text('No tasks assigned yet'));
         }
@@ -479,37 +596,197 @@ class _InternDashboardState extends State<InternDashboard> {
           itemCount: tasks.length,
           itemBuilder: (context, index) {
             final task = tasks[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: ListTile(
-                title: Text(task['title'] ?? ''),
-                subtitle: Text(task['description'] ?? task['status'] ?? ''),
-                trailing: Text(task['priority'] ?? ''),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => TaskDetailsPage(taskId: task['taskId']),
-                    ),
-                  );
-                },
-              ),
-            );
+            return _taskCard(task);
           },
         );
       },
     );
   }
 
-  Widget _buildAttendancePage() {
-    return const Center(
-      child: Text(
-        'Attendance tracking details',
-        style: TextStyle(color: Colors.white),
-      ),
+  Widget _buildAttendancePage(AppState appState, String? internId) {
+    if (internId == null) {
+      return const Center(child: Text('No intern logged in'));
+    }
+
+    return FutureBuilder<Map<String, String>>(
+      future: _loadAttendanceStats(internId),
+      builder: (context, snapshot) {
+        final stats = snapshot.data ??
+            {
+              'attendance': '0%',
+              'attendance_summary': '0/0 present',
+              'attendance_records': '0',
+            };
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Attendance',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      'Attendance Rate',
+                      stats['attendance']!,
+                      Icons.calendar_month,
+                      double.infinity,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Present Ratio',
+                      stats['attendance_summary']!,
+                      Icons.fact_check,
+                      double.infinity,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Recent Attendance Records',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0A1F44),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      future: FirebaseFirestore.instance
+                          .collection('attendance_sessions')
+                          .where('internId', isEqualTo: internId)
+                          .orderBy('date', descending: true)
+                          .get(),
+                      builder: (context, attendanceSnapshot) {
+                        if (attendanceSnapshot.hasError) {
+                          return Text('Error: ${attendanceSnapshot.error}');
+                        }
+                        if (!attendanceSnapshot.hasData) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+
+                        final docs = attendanceSnapshot.data!.docs;
+                        if (docs.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: Text('No attendance records found'),
+                          );
+                        }
+
+                        return ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: docs.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final data = docs[index].data();
+                            final status =
+                                (data['status'] ?? 'unknown').toString();
+                            final note = (data['note'] ?? '').toString();
+                            final rawDate = data['date'];
+                            String dateText = 'No date';
+                            if (rawDate is Timestamp) {
+                              final d = rawDate.toDate();
+                              dateText =
+                                  '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+                            }
+
+                            Color statusColor;
+                            switch (status.toLowerCase()) {
+                              case 'present':
+                                statusColor = Colors.green;
+                                break;
+                              case 'late':
+                                statusColor = Colors.orange;
+                                break;
+                              case 'absent':
+                                statusColor = Colors.red;
+                                break;
+                              case 'excused':
+                                statusColor = Colors.blue;
+                                break;
+                              default:
+                                statusColor = Colors.grey;
+                            }
+
+                            return Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: statusColor.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      Icons.event_available,
+                                      color: statusColor,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          dateText,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text('Status: $status'),
+                                        if (note.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text('Note: $note'),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -521,12 +798,11 @@ class _InternDashboardState extends State<InternDashboard> {
         final doc = documents[index];
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           child: ListTile(
-            leading: const Icon(
-              Icons.insert_drive_file,
-              color: Color(0xFF0A1F44),
-            ),
+            leading: const Icon(Icons.insert_drive_file,
+                color: Color(0xFF0A1F44)),
             title: Text(doc['name'] ?? 'File'),
             trailing: IconButton(
               icon: const Icon(Icons.download),

@@ -1,10 +1,13 @@
+import 'package:aoo/screens/dashboard/assignments_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'assignments_page.dart';
 
 import '../../providers/app_state.dart';
-import 'dashboard_shell.dart';
+import '../dashboard/dashboard_shell.dart';
+import 'supervisor_dashboard.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -14,495 +17,175 @@ class AdminDashboard extends StatefulWidget {
 }
 
 class _AdminDashboardState extends State<AdminDashboard> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final ScrollController _scrollController = ScrollController();
+  int _selectedIndex = 0;
 
-  static const int _pageSize = 10;
-
-  final List<QueryDocumentSnapshot<Map<String, dynamic>>> _users = [];
-  DocumentSnapshot<Map<String, dynamic>>? _lastUserDoc;
-  bool _usersLoading = false;
-  bool _usersHasMore = true;
-
-  int _totalUsers = 0;
-  int _adminCount = 0;
-  int _supervisorCount = 0;
-  int _internCount = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-    _loadInitialData();
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadInitialData() async {
-    setState(() {
-      _users.clear();
-      _lastUserDoc = null;
-      _usersHasMore = true;
-      _usersLoading = true;
-    });
-
-    await Future.wait([
-      _loadStats(),
-      _loadUsers(reset: true),
-    ]);
-
-    if (mounted) setState(() => _usersLoading = false);
-  }
-
-  Future<void> _loadStats() async {
-    final snapshot = await _firestore.collection('users').get();
-
-    int admin = 0;
-    int supervisor = 0;
-    int intern = 0;
-
-    for (final doc in snapshot.docs) {
-      final role = (doc.data()['role'] ?? 'intern').toString();
-      if (role == 'admin') {
-        admin++;
-      } else if (role == 'supervisor') {
-        supervisor++;
-      } else {
-        intern++;
-      }
-    }
-
-    if (mounted) {
-      setState(() {
-        _totalUsers = snapshot.docs.length;
-        _adminCount = admin;
-        _supervisorCount = supervisor;
-        _internCount = intern;
-      });
-    }
-  }
-
-  Query<Map<String, dynamic>> _buildUsersQuery() {
-    return _firestore.collection('users').orderBy('name');
-  }
-
-  Future<void> _loadUsers({bool reset = false}) async {
-    if (_usersLoading || (!_usersHasMore && !reset)) return;
-
-    setState(() => _usersLoading = true);
-
-    Query<Map<String, dynamic>> query = _buildUsersQuery().limit(_pageSize);
-
-    if (!reset && _lastUserDoc != null) {
-      query = query.startAfterDocument(_lastUserDoc!);
-    }
-
-    final snapshot = await query.get();
-
-    if (snapshot.docs.isEmpty) {
-      _usersHasMore = false;
-    } else {
-      _lastUserDoc = snapshot.docs.last;
-      _users.addAll(snapshot.docs);
-      if (snapshot.docs.length < _pageSize) {
-        _usersHasMore = false;
-      }
-    }
-
-    if (mounted) setState(() => _usersLoading = false);
-  }
-
-  void _onScroll() {
-    if (!_scrollController.hasClients) return;
-
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final currentScroll = _scrollController.position.pixels;
-    const delta = 200.0;
-
-    if (maxScroll - currentScroll <= delta && _usersHasMore && !_usersLoading) {
-      _loadUsers();
-    }
-  }
-
-  Future<void> _updateRole(String uid, String newRole) async {
-    await _firestore.collection('users').doc(uid).update({
-      'role': newRole,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-
-    await _loadInitialData();
-  }
-
-  Future<void> _deleteUser(String uid) async {
-    await _firestore.collection('users').doc(uid).delete();
-    await _loadInitialData();
-  }
-
-  Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
-      _getDepartments() async {
-    final snapshot =
-        await _firestore.collection('departments').orderBy('name').get();
-    return snapshot.docs;
-  }
-
-  Future<void> _openUserEditDialog(
-    BuildContext context,
-    QueryDocumentSnapshot<Map<String, dynamic>> doc,
-  ) async {
-    final data = doc.data();
-
-    final firstNameController =
-        TextEditingController(text: (data['firstName'] ?? '').toString());
-    final lastNameController =
-        TextEditingController(text: (data['lastName'] ?? '').toString());
-    final emailController =
-        TextEditingController(text: (data['email'] ?? '').toString());
-    final specializationController = TextEditingController(
-      text: (data['specialization'] ?? data['specialty'] ?? '').toString(),
-    );
-
-    String selectedRole = (data['role'] ?? 'intern').toString();
-    String? selectedDepartmentId = data['departmentId']?.toString();
-    String selectedDepartmentName = (data['departmentName'] ?? '').toString();
-
-    final departments = await _getDepartments();
-
-    if (!context.mounted) return;
-
-    await showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Edit User'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: firstNameController,
-                      decoration:
-                          const InputDecoration(labelText: 'First Name'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: lastNameController,
-                      decoration: const InputDecoration(labelText: 'Last Name'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: emailController,
-                      decoration: const InputDecoration(labelText: 'Email'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: specializationController,
-                      decoration:
-                          const InputDecoration(labelText: 'Specialization'),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: selectedRole,
-                      decoration: const InputDecoration(labelText: 'Role'),
-                      items: const [
-                        DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                        DropdownMenuItem(
-                            value: 'supervisor', child: Text('Supervisor')),
-                        DropdownMenuItem(
-                            value: 'intern', child: Text('Intern')),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setDialogState(() => selectedRole = value);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: selectedDepartmentId,
-                      decoration:
-                          const InputDecoration(labelText: 'Department'),
-                      items: [
-                        const DropdownMenuItem<String>(
-                          value: null,
-                          child: Text('No department'),
-                        ),
-                        ...departments.map((dept) {
-                          final deptData = dept.data();
-                          return DropdownMenuItem<String>(
-                            value: dept.id,
-                            child: Text(
-                                (deptData['name'] ?? 'Unnamed').toString()),
-                          );
-                        }),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) {
-                          setDialogState(() {
-                            selectedDepartmentId = null;
-                            selectedDepartmentName = '';
-                          });
-                          return;
-                        }
-
-                        final dept =
-                            departments.firstWhere((d) => d.id == value);
-                        final deptData = dept.data();
-
-                        setDialogState(() {
-                          selectedDepartmentId = value;
-                          selectedDepartmentName =
-                              (deptData['name'] ?? '').toString();
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    final firstName = firstNameController.text.trim();
-                    final lastName = lastNameController.text.trim();
-                    final fullName = '$firstName $lastName'.trim();
-
-                    await _firestore.collection('users').doc(doc.id).update({
-                      'firstName': firstName,
-                      'lastName': lastName,
-                      'name': fullName,
-                      'fullName': fullName,
-                      'fullNameLower': fullName.toLowerCase(),
-                      'email': emailController.text.trim(),
-                      'specialization': specializationController.text.trim(),
-                      'role': selectedRole,
-                      'departmentId': selectedDepartmentId,
-                      'departmentName': selectedDepartmentName,
-                      'updatedAt': FieldValue.serverTimestamp(),
-                    });
-
-                    if (dialogContext.mounted) {
-                      Navigator.pop(dialogContext);
-                    }
-
-                    await _loadInitialData();
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _openDepartmentDialog({
-    DocumentSnapshot<Map<String, dynamic>>? departmentDoc,
-  }) async {
-    final nameController = TextEditingController(
-      text: departmentDoc?.data()?['name']?.toString() ?? '',
-    );
-    final descriptionController = TextEditingController(
-      text: departmentDoc?.data()?['description']?.toString() ?? '',
-    );
-
-    await showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(
-              departmentDoc == null ? 'Add Department' : 'Edit Department'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-                maxLines: 3,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final name = nameController.text.trim();
-                final description = descriptionController.text.trim();
-
-                if (name.isEmpty) return;
-
-                final payload = {
-                  'name': name,
-                  'description': description,
-                  'updatedAt': FieldValue.serverTimestamp(),
-                };
-
-                if (departmentDoc == null) {
-                  await _firestore.collection('departments').add({
-                    ...payload,
-                    'createdAt': FieldValue.serverTimestamp(),
-                  });
-                } else {
-                  await _firestore
-                      .collection('departments')
-                      .doc(departmentDoc.id)
-                      .update(payload);
-                }
-
-                if (dialogContext.mounted) Navigator.pop(dialogContext);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _deleteDepartment(String departmentId) async {
-    await _firestore.collection('departments').doc(departmentId).delete();
-  }
+  String? get _adminId => FirebaseAuth.instance.currentUser?.uid;
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
 
-    final pages = [
-      SingleChildScrollView(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              appState.translate('admin_control_panel'),
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 24),
-            _buildStatsGrid(appState),
-            const SizedBox(height: 32),
-            _buildDepartmentsSection(),
-            const SizedBox(height: 32),
-            _buildUserManagementSection(),
-          ],
-        ),
-      ),
-      const AssignmentsPage(),
-      const Center(
-        child: Text(
-          'PROFILE PLACEHOLDER',
-          style: TextStyle(fontSize: 24, color: Colors.white),
-        ),
-      ),
+    final List<Widget> pages = [
+      _buildHomePage(appState), // 0
+      const AssignmentsPage(),  // 1
+      const AdminUsersPage(),   // 2
+      const InternshipsManagementPage(), // 3
+      const AdminAttendancePage(),       // 4
+      const AdminSettingsPage(),         // 5
+    ];
+
+    final titles = [
+      'Admin Dashboard',
+      'Assignments',
+      'Users',
+      'Internships',
+      'Attendance',
+      'Settings',
     ];
 
     return DashboardShell(
-      title: appState.translate('admin'),
+      title: titles[_selectedIndex],
       pages: pages,
+      selectedIndex: _selectedIndex,
       initialIndex: 0,
+      onItemSelected: (index) {
+        setState(() => _selectedIndex = index);
+      },
+      child: IndexedStack(
+        index: _selectedIndex,
+        children: pages,
+      ),
     );
   }
 
-  Widget _buildStatsGrid(AppState appState) {
+  Widget _buildHomePage(AppState appState) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final crossAxisCount = width < 600 ? 1 : (width < 1000 ? 2 : 4);
-        final aspectRatio = width < 600 ? 2.5 : 1.5;
+        final isMobile = constraints.maxWidth < 900;
 
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: crossAxisCount,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: aspectRatio,
-          children: [
-            _buildAdminStatCard(
-              appState.translate('total_users'),
-              '$_totalUsers',
-              Icons.people,
-              Colors.indigoAccent,
-            ),
-            _buildAdminStatCard(
-              appState.translate('admins'),
-              '$_adminCount',
-              Icons.admin_panel_settings,
-              Colors.tealAccent,
-            ),
-            _buildAdminStatCard(
-              appState.translate('supervisors'),
-              '$_supervisorCount',
-              Icons.manage_accounts,
-              Colors.amberAccent,
-            ),
-            _buildAdminStatCard(
-              appState.translate('interns'),
-              '$_internCount',
-              Icons.school,
-              Colors.greenAccent,
-            ),
-          ],
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Welcome, ${appState.currentUserName}',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Manage internships, assignments, tasks, and users',
+                style: TextStyle(color: Colors.white.withOpacity(0.8)),
+              ),
+              const SizedBox(height: 24),
+              FutureBuilder<List<int>>(
+                future: Future.wait([
+                  _countUsers('intern'),
+                  _countUsers('supervisor'),
+                  _countInternships(),
+                ]),
+                builder: (context, snapshot) {
+                  final data = snapshot.data ?? [0, 0, 0];
+
+                  final cards = [
+                    _summaryCard(
+                      'Interns',
+                      '${data[0]}',
+                      Icons.people_outline,
+                      Colors.blue,
+                    ),
+                    _summaryCard(
+                      'Supervisors',
+                      '${data[1]}',
+                      Icons.person_outline,
+                      Colors.orange,
+                    ),
+                    _summaryCard(
+                      'Internships',
+                      '${data[2]}',
+                      Icons.work_outline,
+                      Colors.purple,
+                    ),
+                  ];
+
+                  return Column(
+                    children: [
+                      if (isMobile)
+                        Column(
+                          children: [
+                            cards[0],
+                            const SizedBox(height: 16),
+                            cards[1],
+                            const SizedBox(height: 16),
+                            cards[2],
+                          ],
+                        )
+                      else
+                        Row(
+                          children: [
+                            Expanded(child: cards[0]),
+                            const SizedBox(width: 16),
+                            Expanded(child: cards[1]),
+                            const SizedBox(width: 16),
+                            Expanded(child: cards[2]),
+                          ],
+                        ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              _buildRecentAssignments(),
+            ],
+          ),
         );
       },
     );
   }
 
-  Widget _buildAdminStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _summaryCard(String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.white10),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
         children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
+            child: Icon(icon, color: color),
           ),
-          Text(title, style: const TextStyle(color: Colors.white70)),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(title, style: const TextStyle(color: Colors.black54)),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDepartmentsSection() {
+  Widget _buildRecentAssignments() {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -511,83 +194,106 @@ class _AdminDashboardState extends State<AdminDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Departments',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0A1F44),
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _openDepartmentDialog(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0A1F44),
-                  foregroundColor: Colors.white,
-                ),
-                icon: const Icon(Icons.add),
-                label: const Text('Add Department'),
-              ),
-            ],
+          const Text(
+            'Recent Internship Assignments',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0A1F44),
+            ),
           ),
           const SizedBox(height: 16),
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: _firestore
-                .collection('departments')
-                .orderBy('name')
+            stream: FirebaseFirestore.instance
+                .collection('internship_assignments')
+                .orderBy('createdAt', descending: true)
+                .limit(10)
                 .snapshots(),
             builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Text('Error: ${snapshot.error}');
-              }
+              if (snapshot.hasError) return Text('Error: ${snapshot.error}');
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              final departments = snapshot.data!.docs;
-
-              if (departments.isEmpty) {
+              final docs = snapshot.data!.docs;
+              if (docs.isEmpty) {
                 return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Text('No departments found'),
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Text('No assignments found'),
                 );
               }
 
               return ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: departments.length,
-                separatorBuilder: (_, __) => const Divider(),
+                itemCount: docs.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  final dept = departments[index];
-                  final data = dept.data();
-                  final name = (data['name'] ?? '').toString();
-                  final description = (data['description'] ?? '').toString();
+                  final data = docs[index].data();
+                  final internName =
+                      (data['internName'] ?? 'No Name').toString();
+                  final internshipTitle =
+                      (data['internshipTitle'] ?? 'No Internship').toString();
+                  final status = (data['status'] ?? 'assigned').toString();
+                  final supervisorId = (data['supervisorId'] ?? '').toString();
 
-                  return ListTile(
-                    title: Text(name,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(description),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined),
-                          onPressed: () =>
-                              _openDepartmentDialog(departmentDoc: dept),
+                  return FutureBuilder<String>(
+                    future: _getUserNameById(supervisorId),
+                    builder: (context, supervisorSnapshot) {
+                      final supervisorName =
+                          supervisorSnapshot.data ?? 'Loading...';
+
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline,
-                              color: Colors.red),
-                          onPressed: () async {
-                            await _deleteDepartment(dept.id);
-                          },
+                        child: Row(
+                          children: [
+                            const CircleAvatar(
+                              backgroundColor: Color(0xFF0A1F44),
+                              child: Icon(Icons.assignment_ind,
+                                  color: Colors.white),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    internName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    internshipTitle,
+                                    style:
+                                        const TextStyle(color: Colors.black54),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Supervisor: $supervisorName',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.black45,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              status,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   );
                 },
               );
@@ -598,161 +304,289 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildUserManagementSection() {
+  Future<String> _getUserNameById(String userId) async {
+    if (userId.isEmpty) return 'Unknown';
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(userId).get();
+    if (!doc.exists) return 'Unknown';
+    final data = doc.data() ?? {};
+    final name = (data['name'] ??
+            '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}')
+        .toString()
+        .trim();
+    return name.isEmpty ? 'Unknown' : name;
+  }
+
+  Future<int> _countUsers(String role) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('role', isEqualTo: role)
+        .get();
+    return snapshot.size;
+  }
+
+  Future<int> _countInternships() async {
+    final snapshot =
+        await FirebaseFirestore.instance.collection('internships').get();
+    return snapshot.size;
+  }
+}
+
+class InternshipsManagementPage extends StatelessWidget {
+  const InternshipsManagementPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child:
+          Text('Internships Management', style: TextStyle(color: Colors.white)),
+    );
+  }
+}
+
+class AdminAttendancePage extends StatelessWidget {
+  const AdminAttendancePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text('Attendance Management', style: TextStyle(color: Colors.white)),
+    );
+  }
+}
+
+class AdminUsersPage extends StatefulWidget {
+  const AdminUsersPage({super.key});
+
+  @override
+  State<AdminUsersPage> createState() => _AdminUsersPageState();
+}
+
+class _AdminUsersPageState extends State<AdminUsersPage> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final int _pageSize = 15;
+
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> _users = [];
+  bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  DocumentSnapshot<Map<String, dynamic>>? _lastDoc;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMoreUsers();
+  }
+
+  String _displayName(Map<String, dynamic> data) {
+    final name = (data['name'] ??
+            '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}')
+        .toString()
+        .trim();
+    return name.isEmpty ? 'No Name' : name;
+  }
+
+  Future<void> _loadMoreUsers() async {
+    if (_loadingMore || (!_hasMore && _users.isNotEmpty)) return;
+
+    setState(() {
+      if (_users.isEmpty) {
+        _loading = true;
+      } else {
+        _loadingMore = true;
+      }
+    });
+
+    try {
+      Query<Map<String, dynamic>> query = _firestore
+          .collection('users')
+          .orderBy('createdAt', descending: true)
+          .limit(_pageSize);
+
+      if (_lastDoc != null) {
+        query = query.startAfterDocument(_lastDoc!);
+      }
+
+      final snap = await query.get();
+
+      if (snap.docs.isNotEmpty) {
+        _lastDoc = snap.docs.last;
+      }
+
+      setState(() {
+        _users.addAll(snap.docs);
+        _hasMore = snap.docs.length == _pageSize;
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('Load users error: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadingMore = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _updateRole(String uid, String role) async {
+    await _firestore.collection('users').doc(uid).set(
+      {
+        'role': role,
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('User role changed to $role')),
+      );
+    }
+  }
+
+  Future<void> _deleteUser(String uid) async {
+    await _firestore.collection('users').doc(uid).delete();
+
+    if (mounted) {
+      setState(() {
+        _users.removeWhere((u) => u.id == uid);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User deleted')),
+      );
+    }
+  }
+
+  Widget _userCard(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data();
+    final name = _displayName(data);
+    final email = (data['email'] ?? '').toString();
+    final role = (data['role'] ?? 'unknown').toString();
+
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Users (${_users.length})',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0A1F44),
+          const CircleAvatar(
+            child: Icon(Icons.person),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(
+                  email.isEmpty ? 'No email' : email,
+                  style: const TextStyle(color: Colors.black54),
                 ),
-              ),
-              IconButton(
-                onPressed: _usersLoading ? null : _loadInitialData,
-                icon: const Icon(Icons.refresh),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  'Role: $role',
+                  style: const TextStyle(fontSize: 12, color: Colors.black45),
+                ),
+              ],
+            ),
+          ),
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'intern') {
+                await _updateRole(doc.id, 'intern');
+              } else if (value == 'supervisor') {
+                await _updateRole(doc.id, 'supervisor');
+              } else if (value == 'admin') {
+                await _updateRole(doc.id, 'admin');
+              } else if (value == 'delete') {
+                await _deleteUser(doc.id);
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'intern', child: Text('Make intern')),
+              PopupMenuItem(
+                  value: 'supervisor', child: Text('Make supervisor')),
+              PopupMenuItem(value: 'admin', child: Text('Make admin')),
+              PopupMenuDivider(),
+              PopupMenuItem(value: 'delete', child: Text('Delete user')),
             ],
           ),
-          const SizedBox(height: 24),
-          _users.isEmpty && _usersLoading
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              : ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _users.length + (_usersHasMore ? 1 : 0),
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemBuilder: (context, index) {
-                    if (index == _users.length) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Center(
-                          child: _usersLoading
-                              ? const CircularProgressIndicator()
-                              : const SizedBox.shrink(),
-                        ),
-                      );
-                    }
-
-                    final doc = _users[index];
-                    final data = doc.data();
-                    final role = (data['role'] ?? 'intern').toString();
-                    final fullName =
-                        (data['name'] ?? data['fullName'] ?? 'No Name')
-                            .toString();
-                    final email = (data['email'] ?? '').toString();
-                    final departmentName =
-                        (data['departmentName'] ?? 'No department').toString();
-
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: const Color(0xFFF5F5F5),
-                        child: Text(
-                          fullName.isNotEmpty ? fullName[0].toUpperCase() : '?',
-                          style: const TextStyle(color: Color(0xFF0A1F44)),
-                        ),
-                      ),
-                      title: Text(
-                        fullName,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                          '$email\nRole: $role\nDepartment: $departmentName'),
-                      isThreeLine: true,
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (value) async {
-                          if (value == 'edit') {
-                            await _openUserEditDialog(context, doc);
-                          } else if (value == 'delete') {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (dialogContext) {
-                                return AlertDialog(
-                                  title: const Text('Delete user'),
-                                  content: const Text(
-                                    'Are you sure you want to delete this user?',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(dialogContext, false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () =>
-                                          Navigator.pop(dialogContext, true),
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
-
-                            if (confirm == true) {
-                              await _deleteUser(doc.id);
-                            }
-                          } else {
-                            await _updateRole(doc.id, value);
-                          }
-                        },
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(
-                            value: 'admin',
-                            child: Text('Make Admin'),
-                          ),
-                          PopupMenuItem(
-                            value: 'supervisor',
-                            child: Text('Make Supervisor'),
-                          ),
-                          PopupMenuItem(
-                            value: 'intern',
-                            child: Text('Make Intern'),
-                          ),
-                          PopupMenuDivider(),
-                          PopupMenuItem(
-                            value: 'edit',
-                            child: Text('Edit User'),
-                          ),
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: Text(
-                              'Delete User',
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-          if (_usersHasMore)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Center(
-                child: OutlinedButton(
-                  onPressed: _usersLoading ? null : _loadUsers,
-                  child: const Text('Load more'),
-                ),
-              ),
-            ),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Users',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0A1F44),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (_loading && _users.isEmpty)
+              const Center(child: CircularProgressIndicator())
+            else if (_users.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Text('No users found'),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _users.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) => _userCard(_users[index]),
+              ),
+            const SizedBox(height: 16),
+            Center(
+              child: TextButton.icon(
+                onPressed: (_loadingMore || !_hasMore) ? null : _loadMoreUsers,
+                icon: _loadingMore
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.more_horiz),
+                label: Text(_hasMore ? 'Load more' : 'No more users'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AdminSettingsPage extends StatelessWidget {
+  const AdminSettingsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text('Settings', style: TextStyle(color: Colors.white)),
     );
   }
 }

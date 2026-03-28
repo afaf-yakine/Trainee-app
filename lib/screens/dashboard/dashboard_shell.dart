@@ -169,18 +169,17 @@ class _DashboardShellState extends State<DashboardShell> {
   List<_NavItemData> _buildMenu(AppState appState) {
     final items = <_NavItemData>[
       const _NavItemData(Icons.dashboard, 'dashboard'),
-      // const _NavItemData(Icons.task_alt, 'tasks'),
-      // const _NavItemData(Icons.calendar_month, 'attendance'),
-      // const _NavItemData(Icons.folder, 'documents'),
     ];
 
     if (appState.userRole == 'admin') {
       items.add(const _NavItemData(Icons.assignment, 'assignments'));
+      items.add(const _NavItemData(Icons.people, 'users'));
     }
 
     if (appState.userRole == 'supervisor') {
       items.add(const _NavItemData(Icons.assignment, 'internships'));
       items.add(const _NavItemData(Icons.assignment, 'tasks'));
+      items.add(const _NavItemData(Icons.assignment, 'attendances'));
     }
 
     if (appState.userRole == 'intern') {

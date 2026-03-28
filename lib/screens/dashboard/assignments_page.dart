@@ -16,22 +16,28 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   bool _saving = false;
   String? _selectedInternshipId;
   String? _selectedInternshipTitle;
-  String? _selectedSupervisorId;
   final List<String> _selectedInternIds = [];
 
   void _log(String message) {
     if (kDebugMode) debugPrint('[AssignmentsPage] $message');
   }
 
-  Future<void> _assignInternship(String chosenSupervisorId) async {
-    _log('ENTER _assignInternship');
-    _log('chosenSupervisorId=$chosenSupervisorId');
-    _log('_selectedInternshipId=$_selectedInternshipId');
-    _log('_selectedInternIds=$_selectedInternIds');
-    _log('_saving=$_saving');
+  Future<String> _getUserNameById(String userId) async {
+    if (userId.isEmpty) return 'Unknown';
+    final doc = await _firestore.collection('users').doc(userId).get();
+    if (!doc.exists) return 'Unknown';
 
+    final data = doc.data() ?? {};
+    final name = (data['name'] ??
+            '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}')
+        .toString()
+        .trim();
+
+    return name.isEmpty ? 'Unknown' : name;
+  }
+
+  Future<void> _assignInternship() async {
     if (_selectedInternshipId == null) {
-      _log('EXIT: no internship selected');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select an internship')),
       );
@@ -39,72 +45,58 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     }
 
     if (_selectedInternIds.isEmpty) {
-      _log('EXIT: no interns selected');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select at least one intern')),
       );
       return;
     }
 
-    if (chosenSupervisorId.isEmpty) {
-      _log('EXIT: no supervisor selected');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a supervisor')),
-      );
-      return;
-    }
-
     setState(() => _saving = true);
-    _log('_saving set true');
 
     try {
       final adminId = FirebaseAuth.instance.currentUser?.uid;
-      _log('adminId=$adminId');
 
-      final internshipRef =
-          _firestore.collection('internships').doc(_selectedInternshipId);
-      final internshipDoc = await internshipRef.get();
-      _log('internshipDoc.exists=${internshipDoc.exists}');
+      final internshipDoc = await _firestore
+          .collection('internships')
+          .doc(_selectedInternshipId)
+          .get();
+
+      if (!internshipDoc.exists) {
+        throw Exception('Internship not found');
+      }
 
       final internshipData = internshipDoc.data() ?? {};
-      _log('internshipData=$internshipData');
-
       final internshipTitle =
-          (internshipData['title'] ?? _selectedInternshipTitle ?? '')
-              .toString();
-      _log('internshipTitle=$internshipTitle');
+          (internshipData['title'] ?? _selectedInternshipTitle ?? '').toString();
+      final supervisorId = (internshipData['supervisorId'] ?? '').toString();
+
+      if (supervisorId.isEmpty) {
+        throw Exception('This internship has no supervisor assigned');
+      }
 
       final batch = _firestore.batch();
 
       for (final internId in _selectedInternIds) {
-        _log('processing internId=$internId');
-
         final internRef = _firestore.collection('users').doc(internId);
         final internDoc = await internRef.get();
-        _log('internDoc.exists for $internId = ${internDoc.exists}');
-
         final internData = internDoc.data() ?? {};
-        _log('internData for $internId = $internData');
 
         final internName = (internData['name'] ??
                 '${internData['firstName'] ?? ''} ${internData['lastName'] ?? ''}')
             .toString()
             .trim();
-        _log('internName=$internName');
 
         final assignmentId = '${_selectedInternshipId}_$internId';
-        final assignmentRef =
-            _firestore.collection('internship_assignments').doc(assignmentId);
 
         batch.set(
-          assignmentRef,
+          _firestore.collection('internship_assignments').doc(assignmentId),
           {
             'uid': assignmentId,
             'internshipId': _selectedInternshipId,
             'internshipTitle': internshipTitle,
             'internId': internId,
             'internName': internName,
-            'supervisorId': chosenSupervisorId,
+            'supervisorId': supervisorId,
             'assignedByAdminId': adminId,
             'status': 'assigned',
             'assignedAt': FieldValue.serverTimestamp(),
@@ -113,40 +105,29 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
           },
           SetOptions(merge: true),
         );
-        _log('queued assignment write: $assignmentId');
 
-        debugPrint('ABOUT TO UPDATE users/$internId');
-        debugPrint('payload: {assignedSupervisorId: $chosenSupervisorId}');
-
-        await internRef.set(
+        batch.set(
+          internRef,
           {
-            'assignedSupervisorId': chosenSupervisorId,
+            'assignedSupervisorId': supervisorId,
+            'internshipId': _selectedInternshipId,
             'updatedAt': FieldValue.serverTimestamp(),
           },
           SetOptions(merge: true),
         );
-
-        debugPrint('UPDATED users/$internId SUCCESSFULLY');
       }
 
-      _log('committing batch...');
       await batch.commit();
-      _log('batch committed');
 
-      if (!mounted) {
-        _log('not mounted after commit');
-        return;
-      }
+      if (!mounted) return;
 
       setState(() {
         _selectedInternIds.clear();
       });
-      _log('cleared selected interns');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Internship assigned successfully')),
       );
-      _log('success snackbar shown');
     } catch (e, st) {
       _log('ERROR: $e');
       _log('STACK: $st');
@@ -158,39 +139,344 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
     } finally {
       if (mounted) {
         setState(() => _saving = false);
-        _log('_saving set false');
       }
-      _log('EXIT _assignInternship');
     }
   }
 
-  Future<void> _handleAssignPressed() async {
-    _log('ENTER _handleAssignPressed');
-    _log('_selectedSupervisorId=$_selectedSupervisorId');
-    await _assignInternship(_selectedSupervisorId ?? '');
+  Future<void> _openAssignModal() async {
+    final internshipsSnapshot =
+        await _firestore.collection('internships').get();
+
+    if (!mounted) return;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        String? selectedInternshipId = _selectedInternshipId;
+        String? selectedInternshipTitle = _selectedInternshipTitle;
+        final selectedInternIds = <String>{..._selectedInternIds};
+        bool saving = false;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Assign Internship'),
+              content: SizedBox(
+                width: 520,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: selectedInternshipId,
+                        decoration: const InputDecoration(
+                          labelText: 'Select Internship',
+                        ),
+                        items: internshipsSnapshot.docs.map((doc) {
+                          final data = doc.data();
+                          final title = (data['title'] ?? 'Untitled').toString();
+                          return DropdownMenuItem<String>(
+                            value: doc.id,
+                            child: Text(title),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setDialogState(() {
+                            selectedInternshipId = value;
+                            final match = internshipsSnapshot.docs
+                                .where((d) => d.id == value)
+                                .toList();
+                            selectedInternshipTitle = match.isNotEmpty
+                                ? (match.first.data()['title'] ?? '').toString()
+                                : null;
+                            selectedInternIds.clear();
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      const Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Select Interns',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (selectedInternshipId == null)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Text('Please select an internship first'),
+                        )
+                      else
+                        FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                          future: _firestore
+                              .collection('users')
+                              .where('role', isEqualTo: 'intern')
+                              .get(),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasError) {
+                              return Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Text('Error: ${snapshot.error}'),
+                              );
+                            }
+
+                            if (!snapshot.hasData) {
+                              return const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+
+                            final interns = snapshot.data!.docs;
+                            if (interns.isEmpty) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: Text('No interns found'),
+                              );
+                            }
+
+                            return Column(
+                              children: interns.map((doc) {
+                                final data = doc.data();
+                                final internId = doc.id;
+                                final name = (data['name'] ??
+                                        '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}')
+                                    .toString()
+                                    .trim();
+
+                                return CheckboxListTile(
+                                  value: selectedInternIds.contains(internId),
+                                  title: Text(name.isEmpty ? 'No Name' : name),
+                                  controlAffinity:
+                                      ListTileControlAffinity.leading,
+                                  onChanged: (checked) {
+                                    setDialogState(() {
+                                      if (checked == true) {
+                                        selectedInternIds.add(internId);
+                                      } else {
+                                        selectedInternIds.remove(internId);
+                                      }
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          if (selectedInternshipId == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please select an internship'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (selectedInternIds.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please select at least one intern'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          setDialogState(() => saving = true);
+                          try {
+                            _selectedInternshipId = selectedInternshipId;
+                            _selectedInternshipTitle = selectedInternshipTitle;
+                            _selectedInternIds
+                              ..clear()
+                              ..addAll(selectedInternIds);
+
+                            await _assignInternship();
+
+                            if (!mounted) return;
+                            Navigator.pop(dialogContext);
+                          } finally {
+                            if (mounted) setDialogState(() => saving = false);
+                          }
+                        },
+                  child: saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildRecentAssignments() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Recent Internship Assignments',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF0A1F44),
+            ),
+          ),
+          const SizedBox(height: 16),
+          StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: _firestore
+                .collection('internship_assignments')
+                .orderBy('createdAt', descending: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Text('Error: ${snapshot.error}');
+              }
+
+              if (!snapshot.hasData) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+
+              final docs = snapshot.data!.docs;
+
+              if (docs.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Text('No assignments found'),
+                );
+              }
+
+              return ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: docs.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final data = docs[index].data();
+                  final internName =
+                      (data['internName'] ?? 'No Name').toString();
+                  final internshipTitle =
+                      (data['internshipTitle'] ?? 'No Internship').toString();
+                  final status = (data['status'] ?? 'assigned').toString();
+                  final supervisorId = (data['supervisorId'] ?? '').toString();
+
+                  return FutureBuilder<String>(
+                    future: _getUserNameById(supervisorId),
+                    builder: (context, supervisorSnapshot) {
+                      final supervisorName = supervisorSnapshot.data ?? 'Loading...';
+
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        child: Row(
+                          children: [
+                            const CircleAvatar(
+                              backgroundColor: Color(0xFF0A1F44),
+                              child: Icon(Icons.assignment_ind, color: Colors.white),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    internName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    internshipTitle,
+                                    style: const TextStyle(color: Colors.black54),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Supervisor: $supervisorName',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.black45,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              status,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    _log('build called');
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Assignments'),
       ),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () {
-            debugPrint('RAW BUTTON TAP');
-            _handleAssignPressed();
-          },
-          child: _saving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Assign Internship'),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _openAssignModal,
+                child: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Assign Internship'),
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildRecentAssignments(),
+          ],
         ),
       ),
     );
